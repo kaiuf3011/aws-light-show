@@ -12,8 +12,9 @@ USE_CF=$([ "${NO_CDN:-0}" = "1" ] && echo false || echo true)
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
 
-if [ ! -f .adminkey ]; then
-  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 10 > .adminkey
+if [ ! -s .adminkey ]; then
+  # (no early-closing pipe here: with 'set -o pipefail' that would silently stop the script)
+  openssl rand -hex 6 > .adminkey 2>/dev/null || date +%s%N | sha256sum | cut -c1-12 > .adminkey
 fi
 KEY="$(cat .adminkey)"
 
