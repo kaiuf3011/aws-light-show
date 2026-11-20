@@ -8,6 +8,12 @@ cd "$(dirname "$0")"
 
 STACK="${STACK:-aws-light-show}"
 REGION="${AWS_REGION:-ap-south-1}"   # Mumbai, closest region to Coimbatore
+# Remember an existing stack's CloudFront choice, so a plain "bash deploy.sh" never flips it.
+if [ -z "${NO_CDN:-}" ]; then
+  CUR_CF="$(aws cloudformation describe-stacks --stack-name "$STACK" --region "$REGION" \
+    --query "Stacks[0].Parameters[?ParameterKey=='UseCloudFront'].ParameterValue" --output text 2>/dev/null || true)"
+  [ "$CUR_CF" = "false" ] && NO_CDN=1
+fi
 USE_CF=$([ "${NO_CDN:-0}" = "1" ] && echo false || echo true)
 
 bold() { printf '\033[1m%s\033[0m\n' "$*"; }
