@@ -47,10 +47,11 @@ function phone(i) {
       clearInterval(ws._tap);
       if (m.effect.name === 'tug') {
         // fake crowd: team A pulls a bit harder than team B so the rope visibly moves
-        const team = Math.random() < 0.55 ? 'A' : 'B';
+        const team = m.effect.team || (Math.random() < 0.5 ? 'A' : 'B');
+        const n = team === 'A' ? 4 : 3; // fake crowd: red pulls slightly harder so the rope visibly moves
         setTimeout(() => {
           ws._tap = setInterval(() => {
-            if (ws.readyState === 1) ws.send(JSON.stringify({ action: 'tug', team, n: 2 + Math.floor(Math.random() * 3) }));
+            if (ws.readyState === 1) ws.send(JSON.stringify({ action: 'tug', team, n: n + Math.floor(Math.random() * 2) }));
           }, 600);
         }, Math.max(0, m.effect.startsAt - (Date.now() + offset)) + Math.random() * 1500);
       }

@@ -41,6 +41,8 @@
     return { A: { name: 'LEFT', color: '#ff1744' }, B: { name: 'RIGHT', color: '#2979ff' } };
   }
   function tugMyTeam(effect, me) {
+    // the server deals equal teams and tells each phone its side
+    if (effect.team === 'A' || effect.team === 'B') return effect.team;
     // random teams: a fresh coin flip per phone per round, same answer every frame
     if (effect.mode === 'random') return hash(me.seed | 0, Math.floor((effect.startsAt || 0) / 1000) | 0) < 0.5 ? 'A' : 'B';
     if (effect.mode === 'depts') {

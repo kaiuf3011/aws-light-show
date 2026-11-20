@@ -41,10 +41,14 @@ function finishTug() {
     phones: tug.phones, seconds: Math.max(1, Math.round((Math.min(Date.now(), tug.endsAt) - tug.startsAt) / 1000)) }, 600);
 }
 const chargeView = () => ({ type: 'charge', ...meter, level: Math.min(1, meter.taps / meter.goal) });
-function broadcast(effect, lead = 1200) {
-  const payload = JSON.stringify({ type: 'effect', effect, at: Date.now() + lead });
+function broadcast(effect, lead = 1200, perPhone = null) {
+  const at = Date.now() + lead;
+  const payload = JSON.stringify({ type: 'effect', effect, at });
   let n = 0;
-  for (const [c, info] of conns) if (info.role !== 'pending') { send(c, payload); n++; }
+  for (const [c, info] of conns) if (info.role !== 'pending') {
+    const own = perPhone && perPhone(c);
+    send(c, own ? JSON.stringify({ type: 'effect', effect: { ...effect, ...own }, at }) : payload); n++;
+  }
   return n;
 }
 const send = (ws, o) => ws.readyState === 1 && ws.send(typeof o === 'string' ? o : JSON.stringify(o));
@@ -98,8 +102,14 @@ wss.on('connection', (ws) => {
         effect.goal = Math.max(5, phones) * (effect.perPerson || 40);
         meter = { taps: 0, tappers: 0, goal: effect.goal, active: true, done: false };
       }
+      let perPhone = null;
       if (effect.name === 'tug') {
-        const phones = [...conns.values()].filter((c) => c.role === 'phone').length;
+        const deck = [...conns].filter(([, c]) => c.role === 'phone').map(([ws]) => ws);
+        for (let i = deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [deck[i], deck[j]] = [deck[j], deck[i]]; }
+        const teamOf = new Map(deck.map((ws, i) => [ws, i % 2 === 0 ? 'A' : 'B']));
+        perPhone = (ws) => (teamOf.has(ws) ? { team: teamOf.get(ws) } : null);
+        const phones = deck.length;
+        effect.sizeA = Math.ceil(phones / 2); effect.sizeB = Math.floor(phones / 2);
         effect.mode = 'random'; effect.a = 'RED'; effect.b = 'BLUE';
         effect.seconds = effect.seconds || 45;
         effect.goal = Math.max(5, phones) * 8;
@@ -109,7 +119,7 @@ wss.on('connection', (ws) => {
           teamA: effect.a, teamB: effect.b, active: true, done: false, winner: '', phones };
       }
       const t = Date.now();
-      const n = broadcast(effect);
+      const n = broadcast(effect, 1200, perPhone);
       return send(ws, { type: 'ack', effect: effect.name, sent: n, failed: 0, ms: Date.now() - t });
     }
   });

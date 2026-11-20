@@ -87,7 +87,7 @@
     <button class="primary" style="flex:1" id="tugGo">Start tug of war</button>
   </div>
   <div class="status" id="tugNote"></div>
-  <div class="note">Random teams, red or blue. 3-2-1, then everyone pulls. The result and the stats readout play by themselves</div>
+  <div class="note">AWS shuffles the phones and deals equal teams, red and blue. 3-2-1, then everyone pulls. The result and the stats readout play by themselves</div>
 
   <h2><b>03</b> · finale</h2>
   <button class="accentBtn big" id="finale">Send the join link to every phone</button>
@@ -110,9 +110,6 @@
       <button data-fx='{"name":"strobe","color":"#ffffff","hz":2.5}'>Strobe</button>
     </div>
     <div class="note">Strobe is capped at 3 flashes a second. Announce it first: flashing light can affect people with photosensitive epilepsy</div>
-    <h2>departments</h2>
-    <div class="grid"><button data-fx='{"name":"team"}'>Team colours</button></div>
-    <div class="grid" id="spots" style="margin-top:8px"></div>
     <h2>custom</h2>
     <div class="row">
       <input type="color" id="pick" value="#ff9900">
@@ -145,13 +142,6 @@
     $('panel').style.display = 'block';
     $('finaleNote').textContent = 'Opens ' + S.joinUrl;
 
-    S.departments.forEach((d) => {
-      const b = document.createElement('button');
-      const sw = document.createElement('span'); sw.className = 'sw'; sw.style.background = d.color;
-      b.append(sw, document.createTextNode(d.id));
-      b.dataset.fx = JSON.stringify({ name: 'spotlight', dept: d.id });
-      $('spots').appendChild(b);
-    });
 
     const client = ShowClient({
       role: 'admin',
@@ -161,7 +151,7 @@
         if (m.type === 'stats') {
           $('count').textContent = m.phones;
           const z = m.zones || {};
-          $('zones').textContent = `left ${z.left || 0} · middle ${z.center || 0} · right ${z.right || 0} · remote ${z.remote || 0}`;
+          $('zones').textContent = z.remote ? `${z.remote} joined from outside the hall` : '';
         } else if (m.type === 'ack') {
           $('ack').textContent = `[${ASCII.stamp(client.serverNow())}] ${m.effect} → ${m.sent} devices in ${m.ms} ms` + (m.failed ? ` · ${m.failed} gone` : '');
         } else if (m.type === 'charge') {

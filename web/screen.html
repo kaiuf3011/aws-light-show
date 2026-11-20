@@ -17,8 +17,9 @@
   h1 { font-size: 2.4vw; font-weight: 500; margin: 0 0 3vh; line-height: 1.2; }
   #count { color: var(--accent); }
   .countLabel { font-size: 1.15vw; color: var(--text-2); margin: 1.6vh 0 4vh; }
-  #bars { font-size: 1.1vw; line-height: 1.75; white-space: pre; color: var(--text-2); }
-  #bars .lead { color: var(--accent); }
+  #grid { font-size: 1.05vw; line-height: 1.35; white-space: pre; color: var(--text-2); min-height: 11em; }
+  #grid .new { color: var(--accent); }
+  #grid .more { color: var(--muted); }
   .right { display: flex; flex-direction: column; align-items: flex-start; }
   .qrcard { background: #fff; border-radius: 16px; padding: 1.4vw; }
   #qr svg { display: block; width: 24vw; height: 24vw; max-width: 52vh; max-height: 52vh; }
@@ -78,7 +79,7 @@
       <h1 id="title"></h1>
       <pre class="art" id="count"></pre>
       <div class="countLabel">phones connected</div>
-      <div id="bars"></div>
+      <div id="grid"></div>
     </div>
     <div class="right">
       <div class="qrcard"><div id="qr"></div></div>
@@ -180,18 +181,24 @@
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   let shown = 0, target = 0, cities = {}, lastStats = null;
-  function drawBars(m) {
-    const ds = S.departments.map((d) => ({ id: d.id, n: m.depts[d.id] || 0 }));
-    const max = Math.max(1, ...ds.map((d) => d.n));
-    const lead = ds.reduce((a, b) => (b.n > a.n ? b : a), ds[0]);
-    $('bars').innerHTML = ds.map((d) => {
-      const line = `${d.id.padEnd(7)} ${ASCII.bar(d.n / max, 28)} ${String(d.n).padStart(4)}`;
-      return d.n && d === lead ? `<span class="lead">${esc(line)}</span>` : esc(line);
-    }).join('\n');
+  // one ■ per connected phone; the newest ones glow in the accent for a few seconds
+  let fresh = 0, freshUntil = 0;
+  function drawGrid(n) {
+    const COLS = 40, MAX = COLS * 10;
+    const shownN = Math.min(n, MAX);
+    const isNew = (i) => performance.now() < freshUntil && i >= shownN - fresh;
+    let html = '';
+    for (let i = 0; i < shownN; i++) {
+      html += isNew(i) ? '<span class="new">■</span>' : '■';
+      html += (i + 1) % COLS === 0 ? '\n' : ' ';
+    }
+    if (n > MAX) html += `<span class="more">+${n - MAX} more</span>`;
+    $('grid').innerHTML = html;
   }
   function onStats(m) {
     target = m.phones;
-    drawBars(m);
+    if (lastStats && m.phones > lastStats.phones) { fresh = m.phones - lastStats.phones; freshUntil = performance.now() + 3000; }
+    drawGrid(m.phones);
     cities = m.cities || {};
     const names = Object.keys(cities);
     $('cities').textContent = names.length ? 'also live from  ' + names.map((n) => n.toLowerCase() + (cities[n] > 1 ? ' ×' + cities[n] : '')).join(' · ') : '';
@@ -277,7 +284,8 @@
       const sc = tug && tug.startsAt === effect.startsAt ? tug : { a: 0, b: 0, goal: effect.goal || 1 };
       art($('tvA'), teams.A.name, 30 * VW(), 10 * VH()); $('tvA').style.color = teams.A.color;
       art($('tvB'), teams.B.name, 30 * VW(), 10 * VH()); $('tvB').style.color = teams.B.color;
-      $('tvAn').textContent = fmt(sc.a) + ' pulls'; $('tvBn').textContent = fmt(sc.b) + ' pulls';
+      $('tvAn').textContent = `${effect.sizeA || 0} phones · ${fmt(sc.a)} pulls`;
+      $('tvBn').textContent = `${fmt(sc.b)} pulls · ${effect.sizeB || 0} phones`;
       let timer, col = 'var(--text)';
       if (now < effect.startsAt) { timer = String(Math.ceil((effect.startsAt - now) / 1000)); col = 'var(--accent)'; }
       else if (now < effect.endsAt) { const r = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`; if (r <= 5) col = 'var(--red)'; }

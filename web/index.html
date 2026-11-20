@@ -67,37 +67,16 @@
 </head>
 <body>
 
-<section class="step on" id="s-dept">
-  <div class="top"><span id="club"></span><span>1/3</span></div>
-  <h1>Pick your department</h1>
-  <p class="sub">Your phone becomes part of the show</p>
-  <div class="grid" id="depts"></div>
-</section>
-
-<section class="step" id="s-zone">
-  <div class="top"><span>light show</span><span>2/3</span></div>
-  <h1>Where are you sitting</h1>
-  <p class="sub">Light can then travel across the hall</p>
-  <div class="col" id="zones"></div>
-  <button class="opt dashed" id="remote" style="margin-top:8px">Not in the hall, joining remotely</button>
-  <div id="cityBox" style="display:none">
-    <input id="city" maxlength="30" placeholder="Your city" autocomplete="off">
-    <button class="go" style="margin-top:8px;width:100%" id="cityGo">Continue</button>
-  </div>
-  <button class="back" data-back="s-dept">← back</button>
-</section>
-
-<section class="step" id="s-ready">
-  <div class="top"><span>light show</span><span>3/3</span></div>
-  <h1>Get ready</h1>
-  <p class="sub">Three things before the show</p>
+<section class="step on" id="s-ready">
+  <div class="top"><span id="club"></span><span>light show</span></div>
+  <h1>Join the show</h1>
+  <p class="sub">Your phone becomes part of it</p>
   <ul class="tips">
     <li><span>01</span>Brightness to max</li>
     <li><span>02</span>Keep this page open, facing the stage</li>
     <li><span>03</span>Don't lock your phone</li>
   </ul>
   <button class="go" id="ready">Join the show</button>
-  <button class="back" data-back="s-zone">← back</button>
 </section>
 
 <div id="stage">
@@ -138,7 +117,8 @@
 <script>
 (function () {
   const S = window.SHOW;
-  const me = { dept: null, zone: null, city: '', seed: Math.floor(Math.random() * 1e9) };
+  // One-tap join: no department or seat to pick. Teams for games are dealt by the server.
+  const me = { dept: 'ALL', zone: 'center', city: '', seed: Math.floor(Math.random() * 1e9) };
   const $ = (id) => document.getElementById(id);
   function show(step) { document.querySelectorAll('.step').forEach((s) => s.classList.toggle('on', s.id === step)); }
   function store(k, v) { try { localStorage.setItem(k, v); } catch {} }
@@ -158,28 +138,6 @@
 
   $('club').textContent = S.club;
   $('screenWord').textContent = (S.screenWord || 'screen').toLowerCase();
-  S.departments.forEach((d) => {
-    const b = document.createElement('button');
-    b.className = 'opt';
-    const dot = document.createElement('span');
-    dot.className = 'dot'; dot.style.background = d.color;
-    b.append(dot, document.createTextNode(d.id));
-    b.onclick = () => { me.dept = d.id; show('s-zone'); };
-    $('depts').appendChild(b);
-  });
-  S.zones.forEach((z) => {
-    const b = document.createElement('button');
-    b.className = 'opt'; b.textContent = z.label;
-    b.onclick = () => { me.zone = z.id; me.city = ''; show('s-ready'); };
-    $('zones').appendChild(b);
-  });
-  $('remote').onclick = () => { $('cityBox').style.display = 'block'; $('city').focus(); };
-  $('cityGo').onclick = () => {
-    const c = $('city').value.trim();
-    if (!c) { $('city').focus(); return; }
-    me.zone = 'remote'; me.city = c; show('s-ready');
-  };
-  document.querySelectorAll('[data-back]').forEach((b) => (b.onclick = () => show(b.dataset.back)));
 
   // ----- the show -----
   async function keepAwake() { try { if ('wakeLock' in navigator) await navigator.wakeLock.request('screen'); } catch {} }
@@ -188,17 +146,16 @@
   let client, player, lastName = null, connectedAt = null, joinedAt = null;
   const region = (() => { const m = String(window.WS_URL || '').match(/execute-api\.([a-z0-9-]+)\./); return m ? m[1] : 'local'; })();
   function drawIdle() {
-    const zone = me.zone === 'remote' ? me.city : (S.zones.find((z) => z.id === me.zone) || {}).label || '';
     const lines = [];
     if (connectedAt) lines.push(`<span class="muted">[${ASCII.stamp(connectedAt)}]</span> connected to aws · ${region}`);
-    if (joinedAt) lines.push(`<span class="muted">[${ASCII.stamp(joinedAt)}]</span> joined as ${esc(me.dept)} · ${esc(zone.toLowerCase())}`);
+    if (joinedAt) lines.push(`<span class="muted">[${ASCII.stamp(joinedAt)}]</span> you're in`);
     lines.push(`waiting for the show<span class="cursor"></span>`);
     $('idle').innerHTML = lines.join('<br>');
   }
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
   function start() {
-    store('show-me', JSON.stringify({ dept: me.dept, zone: me.zone, city: me.city }));
+    store('show-joined', '1');
     keepAwake();
     try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch {}
     document.querySelectorAll('.step').forEach((s) => s.classList.remove('on'));
@@ -340,13 +297,7 @@
   $('ready').onclick = start;
 
   // Returning visitor (page refreshed mid-show): go straight back in.
-  const saved = load('show-me');
-  if (saved) {
-    try {
-      const v = JSON.parse(saved);
-      if (v.dept && v.zone) { Object.assign(me, v); $('ready').textContent = 'Rejoin the show'; show('s-ready'); }
-    } catch {}
-  }
+  if (load('show-joined')) $('ready').textContent = 'Rejoin the show';
 })();
 </script>
 </body>

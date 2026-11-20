@@ -113,13 +113,19 @@ function sanitizeEffect(e = {}) {
   return out;
 }
 
-async function broadcast(ctx, effect, at = Date.now() + LEAD_MS) {
+// perPhone (optional) lets one broadcast give each connection its own version of the effect,
+// e.g. which tug-of-war team that phone is on.
+async function broadcast(ctx, effect, at = Date.now() + LEAD_MS, perPhone = null) {
   const payload = JSON.stringify({ type: 'effect', effect, at });
   const targets = (await scanAll()).filter((i) => i.role === 'phone' || i.role === 'screen' || i.role === 'admin');
   const t = Date.now();
   let ok = 0;
+  const bodyFor = (it) => {
+    const own = perPhone && perPhone(it);
+    return own ? JSON.stringify({ type: 'effect', effect: { ...effect, ...own }, at }) : payload;
+  };
   for (let i = 0; i < targets.length; i += BATCH) {
-    const res = await Promise.all(targets.slice(i, i + BATCH).map((it) => post(ctx, it.id, payload)));
+    const res = await Promise.all(targets.slice(i, i + BATCH).map((it) => post(ctx, it.id, bodyFor(it))));
     ok += res.filter(Boolean).length;
   }
   return { sent: ok, failed: targets.length - ok, ms: Date.now() - t };
@@ -311,10 +317,21 @@ async function handleMessage(ctx, id, msg) {
         }));
       }
       const at = Date.now() + LEAD_MS;
+      let perPhone = null;
       if (effect.name === 'tug') {
         // Start a tug-of-war round: two teams, a countdown, a time limit, and a knock-out margin.
-        const phones = (await scanAll()).filter((i) => i.role === 'phone').length;
-        // Teams are random: every phone flips its own coin for each round (see web/effects.js).
+        // Equal teams: shuffle every connected phone (Fisher-Yates) and deal them out
+        // alternately, like cards: RED, BLUE, RED, BLUE... so the sides differ by at most one.
+        const deck = (await scanAll()).filter((i) => i.role === 'phone').map((i) => i.id);
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+        const teamOf = new Map(deck.map((cid, i) => [cid, i % 2 === 0 ? 'A' : 'B']));
+        perPhone = (it) => (teamOf.has(it.id) ? { team: teamOf.get(it.id) } : null);
+        const phones = deck.length;
+        effect.sizeA = Math.ceil(phones / 2);
+        effect.sizeB = Math.floor(phones / 2);
         effect.mode = 'random';
         effect.a = 'RED';
         effect.b = 'BLUE';
@@ -333,7 +350,7 @@ async function handleMessage(ctx, id, msg) {
           },
         }));
       }
-      const r = await broadcast(ctx, effect, at);
+      const r = await broadcast(ctx, effect, at, perPhone);
       await post(ctx, id, { type: 'ack', effect: effect.name, ...r });
       return;
     }
