@@ -134,6 +134,11 @@
         break;
       }
 
+      case 'backend':
+        // the big screen shows the backend view; phones just wait
+        out.idle = true;
+        break;
+
       case 'lobby': {
         // joining window before Power-Up: everyone sees the same countdown
         const s = Math.max(0, Math.ceil(((effect.seconds || 60) * 1000 - t) / 1000));

@@ -15,11 +15,29 @@ const LEAD_MS = 1200;
 const BATCH = 200;
 const META = '#charge'; // the power-up meter lives in the same table under this key
 const TUG = '#tug';      // the tug-of-war score lives here
+const METRICS = '#metrics'; // how many times this Lambda has run (shown on the backend view)
+
+// One readable line per action. Open CloudWatch > Live Tail on this function's log group to watch them stream.
+const log = (...parts) => console.log(parts.join(' '));
+
+// Count every invocation, but write the count to DynamoDB at most every 2 s per Lambda copy.
+let unflushed = 0, lastFlush = 0, lastScan = { calls: 0, rows: 0 };
+async function flushCalls() {
+  if (!unflushed || Date.now() - lastFlush < 2000) return;
+  const n = unflushed; unflushed = 0; lastFlush = Date.now();
+  try {
+    await db.send(new UpdateItemCommand({
+      TableName: TABLE, Key: { connectionId: { S: METRICS } },
+      UpdateExpression: 'ADD #c :n', ExpressionAttributeNames: { '#c': 'calls' },
+      ExpressionAttributeValues: { ':n': { N: String(n) } },
+    }));
+  } catch (e) { unflushed += n; }
+}
 const TUG_COUNTDOWN_MS = 3000; // 3-2-1 on every phone before pulling starts
 
 const EFFECTS = new Set([
   'off', 'color', 'rainbow', 'strobe', 'wave', 'pulse',
-  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin', 'lobby',
+  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin', 'lobby', 'backend',
 ]);
 const ZONES = new Set(['left', 'center', 'right', 'remote']);
 
@@ -59,11 +77,13 @@ async function post(ctx, id, data) {
 
 async function scanAll() {
   const items = [];
-  let ExclusiveStartKey;
+  let ExclusiveStartKey, rows = 0, calls = 0;
   do {
     const r = await db.send(new ScanCommand({ TableName: TABLE, ExclusiveStartKey }));
     for (const i of r.Items ?? []) {
-      if (i.connectionId.S.startsWith('#')) continue; // skip the meter item
+      rows++;
+      if (i.connectionId.S === METRICS) calls = Number(i.calls?.N || 0);
+      if (i.connectionId.S.startsWith('#')) continue; // skip the meter items
       items.push({
         id: i.connectionId.S,
         role: i.role?.S ?? 'pending',
@@ -74,11 +94,13 @@ async function scanAll() {
     }
     ExclusiveStartKey = r.LastEvaluatedKey;
   } while (ExclusiveStartKey);
+  lastScan = { calls, rows };
   return items;
 }
 
 function buildStats(items) {
-  const s = { type: 'stats', phones: 0, screens: 0, admins: 0, depts: {}, zones: {}, cities: {} };
+  const s = { type: 'stats', phones: 0, screens: 0, admins: 0, depts: {}, zones: {}, cities: {},
+    calls: lastScan.calls, rows: lastScan.rows, now: Date.now() };
   for (const it of items) {
     if (it.role === 'phone') {
       s.phones++;
@@ -174,6 +196,7 @@ async function finishTug(ctx, view) {
     if (e.name === 'ConditionalCheckFailedException') return; // someone else already finished it
     throw e;
   }
+  log(`tug of war finished → ${winner === 'draw' ? 'draw' : (winner === 'A' ? 'RED' : 'BLUE') + ' wins'} (${view.a} vs ${view.b})`);
   await broadcast(ctx, {
     name: 'tugwin', winner, mode: view.mode, a: view.teamA, b: view.teamB,
     scoreA: view.a, scoreB: view.b, phones: view.phones,
@@ -202,6 +225,7 @@ async function handleMessage(ctx, id, msg) {
         if (city) Item.city = { S: city };
       }
       await db.send(new PutItemCommand({ TableName: TABLE, Item }));
+      log('join', role);
       await post(ctx, id, { type: 'joined', role, s: Date.now() });
       return;
     }
@@ -226,6 +250,7 @@ async function handleMessage(ctx, id, msg) {
         throw e;
       }
       const view = chargeView(item);
+      log(`tap +${n} → ${view.taps}/${view.goal} (${Math.floor(view.level * 100)}%)`);
       await post(ctx, id, view);
       if (view.taps >= view.goal && !view.done) {
         // First Lambda to cross the goal flips "done" and fires FULL POWER on every device.
@@ -238,6 +263,7 @@ async function handleMessage(ctx, id, msg) {
             ExpressionAttributeNames: { '#done': 'done', '#active': 'active' },
             ExpressionAttributeValues: { ':t': { BOOL: true }, ':f': { BOOL: false } },
           }));
+          log('FULL POWER reached');
           await broadcast(ctx, { name: 'powered' });
         } catch (e) {
           if (e.name !== 'ConditionalCheckFailedException') throw e;
@@ -268,6 +294,7 @@ async function handleMessage(ctx, id, msg) {
         throw e;
       }
       const view = tugView(item);
+      log(`pull ${team === 'a' ? 'RED' : 'BLUE'} +${n} → red ${view.a} · blue ${view.b}`);
       await post(ctx, id, view);
       if (Math.abs(view.a - view.b) >= view.goal) await finishTug(ctx, view); // knock-out win
       return;
@@ -351,6 +378,7 @@ async function handleMessage(ctx, id, msg) {
         }));
       }
       const r = await broadcast(ctx, effect, at, perPhone);
+      log(`broadcast "${effect.name}" → ${r.sent} devices in ${r.ms} ms`);
       await post(ctx, id, { type: 'ack', effect: effect.name, ...r });
       return;
     }
@@ -363,6 +391,7 @@ async function handleMessage(ctx, id, msg) {
 export const handler = async (event) => {
   const ctx = event.requestContext;
   const id = ctx.connectionId;
+  unflushed++;
   try {
     if (ctx.routeKey === '$connect') {
       await db.send(new PutItemCommand({
@@ -373,6 +402,7 @@ export const handler = async (event) => {
     }
     if (ctx.routeKey === '$disconnect') {
       await removeConnection(id);
+      log('disconnect');
       return { statusCode: 200 };
     }
     let msg;
@@ -382,5 +412,7 @@ export const handler = async (event) => {
   } catch (err) {
     console.error(err);
     return { statusCode: 500 };
+  } finally {
+    await flushCalls();
   }
 };

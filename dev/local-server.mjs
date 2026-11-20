@@ -53,10 +53,12 @@ function broadcast(effect, lead = 1200, perPhone = null) {
 }
 const send = (ws, o) => ws.readyState === 1 && ws.send(typeof o === 'string' ? o : JSON.stringify(o));
 
+let calls = 0;
 wss.on('connection', (ws) => {
   conns.set(ws, { role: 'pending' });
   ws.on('close', () => conns.delete(ws));
   ws.on('message', (buf) => {
+    calls++;
     let m; try { m = JSON.parse(buf.toString()); } catch { return; }
     const me = conns.get(ws);
     if (m.action === 'sync') return send(ws, { type: 'sync', t0: m.t0, s: Date.now() });
@@ -66,7 +68,7 @@ wss.on('connection', (ws) => {
       return send(ws, { type: 'joined', role: me.role });
     }
     if (m.action === 'stats') {
-      const s = { type: 'stats', phones: 0, depts: {}, zones: {}, cities: {} };
+      const s = { type: 'stats', phones: 0, depts: {}, zones: {}, cities: {}, calls, rows: conns.size + 3, now: Date.now() };
       for (const c of conns.values()) if (c.role === 'phone') {
         s.phones++; s.depts[c.dept] = (s.depts[c.dept] || 0) + 1; s.zones[c.zone] = (s.zones[c.zone] || 0) + 1;
         if (c.zone === 'remote' && c.city) s.cities[c.city] = (s.cities[c.city] || 0) + 1;
