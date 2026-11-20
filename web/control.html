@@ -65,17 +65,23 @@
   </header>
   <div id="zones"></div>
 
-  <h2><b>01</b> · power up the screen</h2>
+  <h2><b>01</b> · join, then power up the screen</h2>
   <div class="row">
-    <select id="perPerson">
+    <select id="lobbySecs" style="flex:1">
+      <option value="0">QR wait · none</option>
+      <option value="60">QR for 60 s</option>
+      <option value="75" selected>QR for 75 s</option>
+      <option value="90">QR for 90 s</option>
+    </select>
+    <select id="perPerson" style="flex:1">
       <option value="20">quick · ~10 s</option>
       <option value="40" selected>normal · ~20 s</option>
       <option value="80">hard · ~40 s</option>
     </select>
-    <button class="primary" style="flex:1" id="charge">Start power-up</button>
   </div>
+  <button class="primary big" style="margin-top:8px" id="charge">Start</button>
   <div class="status" id="chargeNote"></div>
-  <div class="note">Screen goes dark, every phone becomes a tap button, and the poster boots up as the crowd taps. Full power fires by itself at 100%</div>
+  <div class="note">The QR code stays up with a countdown while people join. At zero the screen goes black by itself, every phone becomes a tap button, and the poster appears as the crowd taps. Keep this page open during the countdown</div>
 
   <h2><b>02</b> · tug of war</h2>
   <div class="row">
@@ -164,6 +170,7 @@
         } else if (m.type === 'effect') {
           player.push(m);
           lastFx = m.effect.name;
+          onEffectEcho(m);
         } else if (m.type === 'error' && m.code === 'badkey') {
           client.close();
           try { sessionStorage.removeItem('adminKey'); sessionStorage.setItem('badKey', '1'); } catch {}
@@ -177,7 +184,26 @@
     setInterval(() => { if (lastFx === 'charge' || lastFx === 'powered') client.send({ action: 'charge' }); }, 1000);
     setInterval(() => { if (lastFx === 'tug' || lastFx === 'tugwin') client.send({ action: 'tugstate' }); }, 1000);
     $('tugGo').onclick = () => fire({ name: 'tug', mode: 'random', seconds: Number($('tugSecs').value) });
-    $('charge').onclick = () => fire({ name: 'charge', perPerson: Number($('perPerson').value) });
+    // QR countdown, then Power-Up fires by itself from this page
+    let lobbyTimer = null, lobbyEnd = 0;
+    const fireCharge = () => { clearTimeout(lobbyTimer); lobbyTimer = null; fire({ name: 'charge', perPerson: Number($('perPerson').value) }); };
+    $('charge').onclick = () => {
+      const secs = Number($('lobbySecs').value);
+      if (lobbyTimer || !secs) return fireCharge();          // during the countdown this button skips it
+      fire({ name: 'lobby', seconds: secs });
+    };
+    setInterval(() => {
+      if (!lobbyTimer) { $('charge').textContent = 'Start'; return; }
+      const s = Math.max(0, Math.ceil((lobbyEnd - client.serverNow()) / 1000));
+      $('charge').textContent = `Power-up in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')} · tap to start now`;
+    }, 250);
+    function onEffectEcho(m) {
+      if (m.effect.name === 'lobby') {
+        lobbyEnd = m.at + m.effect.seconds * 1000;
+        clearTimeout(lobbyTimer);
+        lobbyTimer = setTimeout(fireCharge, Math.max(0, lobbyEnd - 1200 - client.serverNow())); // charge is scheduled 1.2 s ahead
+      } else { clearTimeout(lobbyTimer); lobbyTimer = null; }   // anything else, e.g. All off, cancels the countdown
+    }
 
     function fire(effect) {
       $('ack').textContent = 'sending ' + effect.name + '…';

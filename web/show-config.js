@@ -16,7 +16,7 @@ window.SHOW = {
 
   // Power-up poster shown on the projector. Put your image in the web/ folder (e.g. web/poster.jpg)
   // and write its name here. Leave empty to use the built-in "AWS CLOUD CLUB" poster.
-  poster: '',
+  poster: 'poster.jpg',
   // Built-in poster: big block letters (one line each) + a caption under them.
   posterBanner: ['AWS', 'CLOUD CLUB'],
   posterCaption: 'Rathinam Global University · inauguration 2026',

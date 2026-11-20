@@ -134,6 +134,17 @@
         break;
       }
 
+      case 'lobby': {
+        // joining window before Power-Up: everyone sees the same countdown
+        const s = Math.max(0, Math.ceil(((effect.seconds || 60) * 1000 - t) / 1000));
+        out.bg = '#141415';
+        out.big = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+        out.mid = 'until power-up';
+        out.small = 'keep this page open · brightness up';
+        out.fg = '#ededed';
+        break;
+      }
+
       case 'charge':
         // phone page draws the TAP button on top of this
         out.bg = '#000';

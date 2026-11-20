@@ -19,7 +19,7 @@ const TUG_COUNTDOWN_MS = 3000; // 3-2-1 on every phone before pulling starts
 
 const EFFECTS = new Set([
   'off', 'color', 'rainbow', 'strobe', 'wave', 'pulse',
-  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin',
+  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin', 'lobby',
 ]);
 const ZONES = new Set(['left', 'center', 'right', 'remote']);
 

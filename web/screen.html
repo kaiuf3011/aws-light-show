@@ -39,6 +39,8 @@
   #poster { display: none; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-deep); }
   #poster.on { display: flex; }
   #posterArt { color: var(--accent); }
+  #posterCanvas { display: none; }
+  #lobby { font-size: 1.35vw; color: var(--accent); margin: 0 0 2vh; min-height: 1.5em; white-space: pre; }
   #power { position: fixed; left: 0; right: 0; bottom: 5vh; text-align: center; font-size: 1.25vw; color: var(--text-2); white-space: pre; display: none; }
   #power.on { display: block; }
   #power b { color: var(--accent); font-weight: 400; }
@@ -76,6 +78,7 @@
   <div class="bar-top"><span id="prompt"></span><span id="liveTag">connecting…</span></div>
   <div class="main">
     <div>
+      <div id="lobby"></div>
       <h1 id="title"></h1>
       <pre class="art" id="count"></pre>
       <div class="countLabel">phones connected</div>
@@ -94,7 +97,7 @@
 <div id="corner"></div>
 <div id="label" class="layer"></div>
 
-<div id="poster" class="layer"><pre class="art" id="posterArt"></pre></div>
+<div id="poster" class="layer"><pre class="art" id="posterArt"></pre><canvas id="posterCanvas"></canvas></div>
 <div id="power"></div>
 
 <div id="tugv" class="layer">
@@ -164,11 +167,60 @@
     };
     if (S.poster) {
       const img = new Image();
-      img.onload = () => { posterRows = ASCII.fromImage(img, 140, 52); reveal = ASCII.Reveal(posterRows); };
+      img.onload = () => preparePoster(img);
       img.onerror = fromText;
       img.src = S.poster;
     } else fromText();
   })();
+
+  // ----- image poster: revealed tile by tile, centre first; tiles about to appear flicker as characters -----
+  let pImg = null, pTiles = [], pCols = 30, pRows = 38;
+  const RAMP = ' .:-=+*#%@', NOISE = '.:-=+*#';
+  function preparePoster(img) {
+    pImg = img;
+    pRows = Math.round(pCols * img.height / img.width);
+    const c = document.createElement('canvas'); c.width = pCols; c.height = pRows;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.drawImage(img, 0, 0, pCols, pRows);
+    const px = x.getImageData(0, 0, pCols, pRows).data; // read once, never in the loop
+    pTiles = [];
+    for (let r = 0; r < pRows; r++) for (let q = 0; q < pCols; q++) {
+      const k = (r * pCols + q) * 4;
+      const light = (0.2126 * px[k] + 0.7152 * px[k + 1] + 0.0722 * px[k + 2]) / 255;
+      const dx = (q + 0.5) / pCols - 0.5, dy = (r + 0.5) / pRows - 0.5;
+      const dist = Math.min(1, Math.sqrt(dx * dx + dy * dy) / 0.7);
+      pTiles.push({ q, r, light, color: `rgb(${px[k]},${px[k + 1]},${px[k + 2]})`,
+        th: Math.min(0.985, 0.72 * Math.random() + 0.26 * dist), seed: Math.random() * 1000 });
+    }
+  }
+  function drawPoster(level, now, flash) {
+    const cv = $('posterCanvas');
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const H = Math.floor(84 * VH()), W = Math.floor(H * pImg.width / pImg.height);
+    if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#0f0f10'; ctx.fillRect(0, 0, W, H);
+    if (level >= 1) ctx.drawImage(pImg, 0, 0, W, H);
+    else {
+      const tw = W / pCols, th = H / pRows, sw = pImg.width / pCols, sh = pImg.height / pRows;
+      ctx.font = `500 ${Math.floor(th * 0.95)}px 'JetBrains Mono', monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const slot = Math.floor(now / 90);
+      for (const t of pTiles) {
+        if (level >= t.th) ctx.drawImage(pImg, t.q * sw, t.r * sh, sw, sh, t.q * tw, t.r * th, tw + 0.6, th + 0.6);
+        else if (t.th - level < 0.09) {
+          const f = Math.abs(Math.sin(t.seed + slot * 1.7));
+          if (f < 0.7) {
+            ctx.fillStyle = t.color;
+            const ch = f < 0.35 ? RAMP[Math.max(1, Math.floor(t.light * (RAMP.length - 1)))] : NOISE[Math.floor(f * 10) % NOISE.length];
+            ctx.fillText(ch, t.q * tw + tw / 2, t.r * th + th / 2);
+          }
+        }
+      }
+    }
+    if (flash > 0) { ctx.fillStyle = `rgba(255,255,255,${flash})`; ctx.fillRect(0, 0, W, H); }
+  }
 
   // ----- the server-log ticker (signature) -----
   const log = [];
@@ -260,7 +312,17 @@
     const posterMode = name === 'charge' || name === 'powered';
     $('poster').classList.toggle('on', posterMode);
     $('power').classList.toggle('on', name === 'charge');
-    if (posterMode && reveal) {
+    $('posterArt').style.display = pImg ? 'none' : '';
+    $('posterCanvas').style.display = pImg ? 'block' : 'none';
+    if (posterMode && pImg) {
+      label = ''; f = { bg: 'var(--bg-deep)' };
+      const goal = name === 'powered' ? 1 : charge.level;
+      powerShown += (goal - powerShown) * 0.08;
+      const lvl = name === 'powered' ? 1 : powerShown;
+      drawPoster(lvl, performance.now(), name === 'powered' ? Math.max(0, 0.8 - t / 600) : 0);
+      const pct = String(Math.floor(powerShown * 100)).padStart(3, ' ');
+      $('power').innerHTML = `power  [<b>${ASCII.bar(powerShown, 32)}</b>] ${pct}%   ${charge.tappers || 0} tapping`;
+    } else if (posterMode && reveal) {
       label = ''; f = { bg: 'var(--bg-deep)' };
       const goal = name === 'powered' ? 1 : charge.level;
       powerShown += (goal - powerShown) * 0.08;
@@ -332,7 +394,15 @@
       $('tzCta').innerHTML = `${esc(fill(T.spoiler))}  ·  <b>${esc(fill(T.cta))}</b>`; $('tzCta').classList.toggle('in', tt >= 5500);
     } else { $('tzQ').classList.remove('in'); $('tzCta').classList.remove('in'); }
 
-    const active = effect && effect.name !== 'off';
+    // joining window: keep the QR screen up, with a countdown to Power-Up
+    const lobbyOn = name === 'lobby';
+    if (lobbyOn) {
+      label = '';
+      const left = Math.max(0, (effect.seconds || 60) * 1000 - t);
+      const s = Math.ceil(left / 1000);
+      $('lobby').textContent = `power-up in ${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}  [${ASCII.bar(1 - left / ((effect.seconds || 60) * 1000), 24)}]`;
+    } else $('lobby').textContent = '';
+    const active = effect && effect.name !== 'off' && !lobbyOn;
     $('fx').style.background = f.bg || 'var(--bg)';
     $('ui').classList.toggle('hide', !!active);
     $('corner').classList.toggle('on', !!active && !posterMode && !tugOn && !teaserOn && !winOn);
