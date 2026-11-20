@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Printable QR · Light Show</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #ddd; }
+  .bar { padding: 14px; text-align: center; font-size: 15px; }
+  .bar button { font-size: 16px; padding: 10px 22px; border-radius: 10px; border: 0; background: #ff9900; font-weight: 800; cursor: pointer; }
+  .page { width: 210mm; height: 297mm; margin: 0 auto 20px; background: #fff; color: #000; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center; padding: 18mm; page-break-after: always; }
+  .kicker { font-size: 16pt; letter-spacing: .3em; font-weight: 800; color: #c25e00; text-transform: uppercase; }
+  h1 { font-size: 46pt; line-height: 1.05; margin: 8mm 0 10mm; font-weight: 900; }
+  #qr svg { width: 150mm; height: 150mm; display: block; }
+  .scan { font-size: 26pt; font-weight: 900; margin-top: 10mm; }
+  .url { font-size: 14pt; margin-top: 4mm; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+  .tip { font-size: 13pt; margin-top: 6mm; color: #444; }
+  @media print { body { background: #fff; } .bar { display: none; } .page { margin: 0; } }
+</style>
+</head>
+<body>
+<div class="bar">Print this page and put copies around the hall (seats, walls, entrance). <button onclick="print()">🖨️ Print</button></div>
+<div class="page">
+  <div class="kicker" id="club"></div>
+  <h1 id="title"></h1>
+  <div id="qr"></div>
+  <div class="scan">📱 Scan to join the show</div>
+  <div class="url" id="url"></div>
+  <div class="tip">Brightness up 🔆 · keep your screen on</div>
+</div>
+<script src="show-config.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script>
+  const S = window.SHOW;
+  const joinUrl = location.origin + location.pathname.replace(/qr\.html$/, '');
+  document.getElementById('club').textContent = S.club;
+  document.getElementById('title').textContent = S.title;
+  document.getElementById('url').textContent = joinUrl.replace(/^https?:\/\//, '');
+  const q = qrcode(0, 'M'); q.addData(joinUrl); q.make();
+  document.getElementById('qr').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+</script>
+</body>
+</html>

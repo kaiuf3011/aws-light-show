@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Join the Light Show</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #000; color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  .step { position: fixed; inset: 0; display: none; flex-direction: column; padding: 28px 22px calc(28px + env(safe-area-inset-bottom));
+    overflow-y: auto; background: radial-gradient(120% 80% at 50% 0%, #1a1030 0%, #000 60%); }
+  .step.on { display: flex; }
+  .kicker { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: #ff9900; font-weight: 700; }
+  h1 { font-size: 30px; line-height: 1.1; margin: 10px 0 6px; font-weight: 800; }
+  p.sub { color: #b9b4c9; margin: 0 0 22px; font-size: 15px; line-height: 1.45; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .opt { border: 2px solid #2c2640; background: #120e1e; color: #fff; border-radius: 16px; padding: 18px 12px;
+    font-size: 18px; font-weight: 700; text-align: center; cursor: pointer; transition: transform .1s; }
+  .opt:active { transform: scale(.96); }
+  .opt .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .wide { grid-column: span 2; }
+  input { width: 100%; padding: 16px; border-radius: 14px; border: 2px solid #2c2640; background: #120e1e; color: #fff; font-size: 18px; margin-top: 12px; }
+  .go { margin-top: auto; border: 0; border-radius: 18px; padding: 20px; font-size: 20px; font-weight: 800; color: #000;
+    background: linear-gradient(90deg, #ff9900, #ffcc00); cursor: pointer; }
+  .tips { list-style: none; padding: 0; margin: 0 0 24px; display: flex; flex-direction: column; gap: 12px; font-size: 17px; }
+  .tips li { background: #120e1e; border: 1px solid #2c2640; border-radius: 14px; padding: 14px 16px; }
+  #stage { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column;
+    background: #000; text-align: center; padding: 20px; }
+  #stage.on { display: flex; }
+  #big { font-size: min(26vw, 200px); font-weight: 900; line-height: 1; letter-spacing: -.02em; word-break: break-word; }
+  #big.long { font-size: min(13vw, 90px); }
+  #mid { font-size: 25px; font-weight: 800; line-height: 1.3; margin-top: 18px; max-width: 520px; }
+  #small { white-space: pre-line; font-size: 22px; font-weight: 800; margin-top: 14px; letter-spacing: .05em; }
+  #link { display: none; margin-top: 28px; padding: 18px 28px; border-radius: 16px; background: #000; color: #fff;
+    font-size: 20px; font-weight: 800; text-decoration: none; }
+  #status { position: fixed; left: 0; right: 0; bottom: calc(18px + env(safe-area-inset-bottom)); text-align: center;
+    font-size: 14px; color: #6f6a80; transition: opacity .4s; }
+  #status b { color: #00e676; }
+  #idle { color: #3a3550; font-size: 15px; line-height: 1.6; }
+  #charge { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 26px; touch-action: manipulation; user-select: none; -webkit-user-select: none; z-index: 5; }
+  #charge.on { display: flex; }
+  #charge .hint { font-size: 22px; font-weight: 900; text-align: center; letter-spacing: .02em; }
+  #charge .hint small { display: block; font-size: 14px; color: #8d86a3; font-weight: 600; margin-top: 6px; }
+  #tapBtn { width: 68vw; height: 68vw; max-width: 320px; max-height: 320px; border-radius: 50%; border: 0; cursor: pointer;
+    background: radial-gradient(circle at 50% 35%, #ffcc66, #ff9900 55%, #c25e00); color: #000;
+    font-size: 64px; font-weight: 900; touch-action: manipulation; transition: transform .06s;
+    box-shadow: 0 0 40px rgba(255,153,0,.5); }
+  #tapBtn.hit { transform: scale(.92); }
+  #meter { width: 76vw; max-width: 360px; height: 16px; border-radius: 99px; background: #1d1830; overflow: hidden; }
+  #meterFill { height: 100%; width: 0; background: linear-gradient(90deg, #ff9900, #ffe082); transition: width .3s; }
+  #pct { font-size: 18px; font-weight: 800; color: #ffcc66; }
+  #tug { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 20px; touch-action: manipulation; user-select: none; -webkit-user-select: none; z-index: 6; text-align: center; }
+  #tug.on { display: flex; }
+  #tugPick, #tugPlay { display: none; flex-direction: column; align-items: center; gap: 18px; width: 100%; }
+  #tugPick.on, #tugPlay.on { display: flex; }
+  .pickBtn { width: 86%; padding: 26px; border-radius: 20px; border: 0; font-size: 26px; font-weight: 900; color: #000; cursor: pointer; }
+  #tugName { font-size: 26px; font-weight: 900; letter-spacing: .04em; }
+  #tugInfo { font-size: 18px; font-weight: 800; color: #ddd; min-height: 24px; }
+  #pullBtn { width: 66vw; height: 66vw; max-width: 300px; max-height: 300px; border-radius: 50%; border: 0; color: #000;
+    font-size: 54px; font-weight: 900; touch-action: manipulation; transition: transform .06s, opacity .2s; cursor: pointer; }
+  #pullBtn.hit { transform: scale(.9); }
+  #pullBtn.wait { opacity: .35; }
+  #rope { position: relative; width: 84vw; max-width: 380px; height: 22px; border-radius: 99px; overflow: hidden; display: flex; }
+  #rope .half { flex: 1; opacity: .55; }
+  #knot { position: absolute; top: -4px; width: 14px; height: 30px; margin-left: -7px; background: #fff; border-radius: 4px; left: 50%;
+    box-shadow: 0 0 12px #fff; transition: left .25s; }
+  .back { background: none; border: 0; color: #6f6a80; font-size: 14px; margin-top: 14px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<section class="step on" id="s-dept">
+  <div class="kicker" id="club"></div>
+  <h1>You're part of the show 🎆</h1>
+  <p class="sub">Pick your department. Your phone will light up in your team colour.</p>
+  <div class="grid" id="depts"></div>
+</section>
+
+<section class="step" id="s-zone">
+  <div class="kicker">Step 2 of 3</div>
+  <h1>Where are you sitting?</h1>
+  <p class="sub">This lets us send light waves across the hall.</p>
+  <div class="col" id="zones"></div>
+  <button class="opt" id="remote" style="margin-top:12px;border-style:dashed">🌍 I'm not in the hall (joining remotely)</button>
+  <div id="cityBox" style="display:none">
+    <input id="city" maxlength="30" placeholder="Your city (e.g. Dubai)" autocomplete="off">
+    <button class="go" style="margin-top:12px;width:100%" id="cityGo">Continue</button>
+  </div>
+  <button class="back" data-back="s-dept">← back</button>
+</section>
+
+<section class="step" id="s-ready">
+  <div class="kicker">Step 3 of 3</div>
+  <h1>Get ready ⚡</h1>
+  <ul class="tips">
+    <li>🔆 Turn your <b>brightness to MAX</b></li>
+    <li>📱 Keep this screen open &amp; face it <b>towards the stage</b></li>
+    <li>🔒 Don't lock your phone</li>
+  </ul>
+  <button class="go" id="ready">I'm ready, let's go!</button>
+  <button class="back" data-back="s-zone">← back</button>
+</section>
+
+<div id="stage">
+  <div id="big"></div>
+  <div id="mid"></div>
+  <div id="small"></div>
+  <a id="link" target="_blank" rel="noopener">Join now →</a>
+  <div id="idle">You're in ✓<br>Wait for the show to start…<br><span style="font-size:13px">brightness up 🔆 · keep screen on</span></div>
+</div>
+<div id="status"></div>
+<div id="tug">
+  <div id="tugPick">
+    <div style="font-size:24px;font-weight:900">🪢 TUG OF WAR</div>
+    <div style="font-size:16px;color:#aaa">Pick a team to help!</div>
+    <button class="pickBtn" id="pickA"></button>
+    <button class="pickBtn" id="pickB"></button>
+  </div>
+  <div id="tugPlay">
+    <div id="tugName"></div>
+    <button id="pullBtn">3</button>
+    <div id="rope"><div class="half" id="ropeA"></div><div class="half" id="ropeB"></div><div id="knot"></div></div>
+    <div id="tugInfo"></div>
+  </div>
+</div>
+<div id="charge">
+  <div class="hint">⚡ POWER UP THE <span id="screenWord">SCREEN</span> ⚡<small>tap as fast as you can, everyone together!</small></div>
+  <button id="tapBtn">TAP</button>
+  <div id="meter"><div id="meterFill"></div></div>
+  <div id="pct">0%</div>
+</div>
+
+<script src="config.js"></script>
+<script src="show-config.js"></script>
+<script src="effects.js"></script>
+<script src="client.js"></script>
+<script>
+(function () {
+  const S = window.SHOW;
+  const me = { dept: null, zone: null, city: '', seed: Math.floor(Math.random() * 1e9) };
+  const $ = (id) => document.getElementById(id);
+  function show(step) {
+    document.querySelectorAll('.step').forEach((s) => s.classList.toggle('on', s.id === step));
+  }
+  function store(k, v) { try { localStorage.setItem(k, v); } catch {} }
+  function load(k) { try { return localStorage.getItem(k); } catch { return null; } }
+
+  $('club').textContent = S.club;
+  $('screenWord').textContent = S.screenWord || 'SCREEN';
+  S.departments.forEach((d) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    const dot = document.createElement('span');
+    dot.className = 'dot'; dot.style.background = d.color;
+    b.append(dot, document.createTextNode(d.id));
+    b.onclick = () => { me.dept = d.id; show('s-zone'); };
+    $('depts').appendChild(b);
+  });
+  S.zones.forEach((z) => {
+    const b = document.createElement('button');
+    b.className = 'opt'; b.textContent = z.label;
+    b.onclick = () => { me.zone = z.id; me.city = ''; show('s-ready'); };
+    $('zones').appendChild(b);
+  });
+  $('remote').onclick = () => { $('cityBox').style.display = 'block'; $('city').focus(); };
+  $('cityGo').onclick = () => {
+    const c = $('city').value.trim();
+    if (!c) { $('city').focus(); return; }
+    me.zone = 'remote'; me.city = c; show('s-ready');
+  };
+  document.querySelectorAll('[data-back]').forEach((b) => (b.onclick = () => show(b.dataset.back)));
+
+  // ----- the show -----
+  let wakeLock = null;
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen'); } catch {}
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  let client, player, lastName = null;
+  function start() {
+    store('show-me', JSON.stringify({ dept: me.dept, zone: me.zone, city: me.city }));
+    keepAwake();
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); } catch {}
+    document.querySelectorAll('.step').forEach((s) => s.classList.remove('on'));
+    $('stage').classList.add('on');
+
+    client = ShowClient({
+      role: 'phone',
+      getJoin: () => ({ dept: me.dept, zone: me.zone, city: me.city }),
+      onStatus: (s) => {
+        $('status').innerHTML = s === 'open' ? '<b>●</b> connected' : s === 'connecting' ? 'connecting…' : 'reconnecting…';
+      },
+      onMessage: (m) => {
+        if (m.type === 'effect') player.push(m);
+        else if (m.type === 'charge') chargeLevel = Math.max(chargeLevel, m.level);
+        else if (m.type === 'tug') tugState = m;
+      },
+    });
+    player = EffectPlayer(client);
+    requestAnimationFrame(loop);
+    setInterval(flushTaps, 800);
+    setInterval(tugFlush, 500);
+  }
+
+  // ----- power-up: taps are counted locally and sent in small batches -----
+  let chargeOn = false, chargeId = null, pendingTaps = 0, sentFirst = false, chargeLevel = 0, shownLevel = 0;
+  function flushTaps() {
+    if (!chargeOn || pendingTaps === 0) return;
+    if (client.send({ action: 'tap', n: pendingTaps, first: !sentFirst })) { sentFirst = true; pendingTaps = 0; }
+  }
+  $('tapBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (!chargeOn) return;
+    pendingTaps++;
+    const b = $('tapBtn');
+    b.classList.add('hit');
+    setTimeout(() => b.classList.remove('hit'), 70);
+    if (navigator.vibrate) navigator.vibrate(12);
+  });
+
+  function loop() {
+    const { effect, t } = player.frame();
+    const f = Effects.render(effect, t, me);
+    drawTug(effect);
+    const isCharge = !!effect && effect.name === 'charge';
+    if (isCharge && chargeId !== effect.goal + ':' + t0Of(effect)) {
+      chargeId = effect.goal + ':' + t0Of(effect); sentFirst = false; pendingTaps = 0; chargeLevel = 0; shownLevel = 0;
+    }
+    chargeOn = isCharge;
+    $('charge').classList.toggle('on', isCharge);
+    if (isCharge) {
+      shownLevel += (chargeLevel - shownLevel) * 0.2;
+      $('meterFill').style.width = (shownLevel * 100).toFixed(1) + '%';
+      $('pct').textContent = Math.floor(shownLevel * 100) + '%';
+      $('tapBtn').style.boxShadow = `0 0 ${30 + shownLevel * 120}px rgba(255,153,0,${0.35 + shownLevel * 0.6})`;
+    }
+    document.body.style.background = f.bg;
+    $('stage').style.background = f.bg;
+    $('idle').style.display = f.idle ? 'block' : 'none';
+    $('status').style.opacity = f.idle ? 1 : 0;
+    if ($('big').textContent !== f.big) {
+      $('big').textContent = f.big;
+      $('big').classList.toggle('long', f.big.length > 4);
+    }
+    $('big').style.color = f.fg;
+    $('mid').textContent = f.mid || '';
+    $('mid').style.color = f.fg;
+    $('small').textContent = f.small;
+    $('small').style.color = f.fg;
+    if (f.link) { $('link').href = f.link; $('link').style.display = 'inline-block'; }
+    else $('link').style.display = 'none';
+    // little buzz on Android when a new effect kicks in
+    const name = effect ? effect.name : null;
+    if (name !== lastName) { lastName = name; if (name && name !== 'off' && navigator.vibrate) navigator.vibrate(60); }
+    requestAnimationFrame(loop);
+  }
+
+  const t0Of = (e) => (e && e.__at) || 0;
+  // ----- tug of war -----
+  let tugRound = null, tugPending = 0, tugState = null, tugFx = null;
+  function tugFlush() {
+    if (!tugFx || !me.tugTeam || tugPending === 0) return;
+    if (client.send({ action: 'tug', team: me.tugTeam, n: tugPending })) tugPending = 0;
+  }
+  $('pullBtn').addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    if (!tugFx || !me.tugTeam) return;
+    const now = client.serverNow();
+    if (now < tugFx.startsAt || now >= tugFx.endsAt) return;
+    tugPending++;
+    me.tugPulls = (me.tugPulls || 0) + 1;
+    const b = $('pullBtn'); b.classList.add('hit'); setTimeout(() => b.classList.remove('hit'), 70);
+    if (navigator.vibrate) navigator.vibrate(12);
+  });
+  $('pickA').onclick = () => { me.tugPick = 'A'; };
+  $('pickB').onclick = () => { me.tugPick = 'B'; };
+  function drawTug(effect) {
+    const on = !!effect && effect.name === 'tug';
+    $('tug').classList.toggle('on', on);
+    if (!on) { tugFx = null; return; }
+    if (tugRound !== effect.__at) { tugRound = effect.__at; me.tugPick = null; tugPending = 0; tugState = null; me.tugPulls = 0; }
+    tugFx = effect;
+    const teams = Effects.tugTeams(effect);
+    const team = Effects.tugMyTeam(effect, me);
+    me.tugTeam = team;
+    $('ropeA').style.background = teams.A.color;
+    $('ropeB').style.background = teams.B.color;
+    $('tugPick').classList.toggle('on', !team);
+    $('tugPlay').classList.toggle('on', !!team);
+    if (!team) {
+      $('pickA').textContent = 'Help ' + teams.A.name; $('pickA').style.background = teams.A.color;
+      $('pickB').textContent = 'Help ' + teams.B.name; $('pickB').style.background = teams.B.color;
+      return;
+    }
+    const col = teams[team].color;
+    $('tugName').textContent = 'TEAM ' + teams[team].name;
+    $('tugName').style.color = col;
+    $('pullBtn').style.background = col;
+    $('pullBtn').style.boxShadow = '0 0 50px ' + col;
+    const now = client.serverNow();
+    if (now < effect.startsAt) {
+      $('pullBtn').textContent = String(Math.ceil((effect.startsAt - now) / 1000));
+      $('pullBtn').classList.add('wait');
+      $('tugInfo').textContent = 'Get ready…';
+    } else if (now < effect.endsAt) {
+      $('pullBtn').textContent = 'PULL!';
+      $('pullBtn').classList.remove('wait');
+      $('tugInfo').textContent = '⏱ ' + Math.ceil((effect.endsAt - now) / 1000) + 's';
+    } else {
+      $('pullBtn').textContent = '⏱';
+      $('pullBtn').classList.add('wait');
+      $('tugInfo').textContent = "TIME! Who won? 👀";
+    }
+    const pos = tugState ? Math.max(-1, Math.min(1, (tugState.b - tugState.a) / tugState.goal)) : 0;
+    $('knot').style.left = (50 + pos * 46) + '%';
+  }
+
+  $('ready').onclick = start;
+
+  // Returning visitor (page refreshed mid-show): go straight back in.
+  const saved = load('show-me');
+  if (saved) {
+    try {
+      const v = JSON.parse(saved);
+      if (v.dept && v.zone) {
+        Object.assign(me, v);
+        $('ready').textContent = 'Rejoin the show ⚡';
+        show('s-ready');
+      }
+    } catch {}
+  }
+})();
+</script>
+</body>
+</html>

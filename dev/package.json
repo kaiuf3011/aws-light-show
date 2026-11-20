@@ -1,0 +1,12 @@
+{
+  "name": "light-show-dev-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "local": "node local-server.mjs",
+    "fake": "node fake-phones.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
