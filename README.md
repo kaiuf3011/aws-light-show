@@ -1,5 +1,7 @@
 # 300 Phones, One Button: AWS Live Light Show
 
+UI direction: the terminal (graphite neutrals, AWS orange accent, JetBrains Mono, ASCII block letters), designed following [unslop](https://github.com/heydamir/unslop) by Damir Sokolovsky (@heydamir), CC BY 4.0. JetBrains Mono is bundled under the SIL Open Font License.
+
 The audience scans a QR code and their phones join the show. You press one button and every phone in the hall lights up together, controlled through AWS.
 
 ```

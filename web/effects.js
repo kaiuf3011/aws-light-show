@@ -113,7 +113,7 @@
         if (me.dept && me.dept === effect.dept) {
           out.bg = dim(deptColor(me.dept), 0.65 + 0.35 * Math.sin(t / 160));
           out.big = me.dept;
-          out.small = 'MAKE SOME NOISE 📣';
+          out.small = 'make some noise';
           out.fg = '#000';
         }
         break;
@@ -140,9 +140,9 @@
       case 'powered':
         if (t < 450) out.bg = '#ffffff';
         else {
-          out.bg = dim('#ff9900', Math.max(0.75, 1 - (t - 450) / 3000) * (0.85 + 0.15 * Math.sin(t / 120)));
-          out.big = '⚡';
-          out.small = 'FULL POWER';
+          out.bg = dim('#ff9900', Math.max(0.9, 1 - (t - 450) / 3000) * (0.92 + 0.08 * Math.sin(t / 120)));
+          out.big = 'ON';
+          out.small = 'full power';
           out.fg = '#000';
         }
         break;
@@ -163,18 +163,18 @@
           .replace('{seconds}', effect.seconds || '').replace('{mine}', me.tugPulls || 0);
         if (t >= 4500 && mine && t < 9000) {
           // stage 2: your own number
-          out.bg = '#0b0814';
+          out.bg = '#141415';
           out.big = String(me.tugPulls || 0);
-          out.mid = 'pulls from you ⚡';
-          out.small = 'AWS counted every single one.';
+          out.mid = 'pulls from you';
+          out.small = 'AWS counted every single one';
           out.fg = '#ffcc66';
           break;
         }
         if (t >= (mine ? 9000 : 4500)) {
           // stage 3: the curiosity hook
           const T = (window.SHOW && window.SHOW.tugTeaser) || {};
-          out.bg = '#0b0814';
-          out.big = '🤔';
+          out.bg = '#141415';
+          out.big = '?';
           out.mid = fill(T.question);
           out.small = fill(T.spoiler) + '\n' + fill(T.cta);
           out.fg = '#ffffff';
@@ -186,8 +186,8 @@
           out.fg = '#000';
         } else if (mine === effect.winner) {
           out.bg = t < 400 ? '#ffffff' : dim(teams[mine].color, 0.7 + 0.3 * Math.sin(t / 140));
-          out.big = '🏆';
-          out.small = 'YOUR TEAM WINS!';
+          out.big = 'WIN';
+          out.small = 'your team won';
           out.fg = '#000';
         } else if (mine) {
           out.bg = '#141414';
@@ -197,7 +197,7 @@
         } else {
           out.bg = dim(teams[effect.winner].color, 0.6 + 0.3 * Math.sin(t / 160));
           out.big = teams[effect.winner].name;
-          out.small = 'WINS 🏆';
+          out.small = 'wins';
           out.fg = '#000';
         }
         break;

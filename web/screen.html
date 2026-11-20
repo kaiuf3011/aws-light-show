@@ -3,137 +3,121 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stage Screen · Light Show</title>
+<title>Big screen · AWS Cloud Club light show</title>
+<link rel="stylesheet" href="ui.css">
 <style>
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  #fx { position: fixed; inset: 0; background: #000; }
-  #ui { position: fixed; inset: 0; display: grid; grid-template-columns: 1.25fr 1fr; gap: 4vw; padding: 5vh 5vw 14vh;
-    transition: opacity .5s; background: radial-gradient(100% 90% at 20% 0%, #1d1238 0%, #000 65%); }
+  html, body { height: 100%; overflow: hidden; }
+  .layer { position: fixed; inset: 0; }
+  #fx { background: var(--bg); }
+  #ui { display: flex; flex-direction: column; padding: 4vh 4vw 3vh; transition: opacity .4s var(--ease); background: var(--bg); }
   #ui.hide { opacity: 0; pointer-events: none; }
-  .kicker { font-size: 1.4vw; letter-spacing: .25em; text-transform: uppercase; color: #ff9900; font-weight: 800; }
-  h1 { font-size: 4.6vw; line-height: 1.02; margin: 1.2vh 0 3vh; font-weight: 900; letter-spacing: -.02em; }
-  .count { font-size: 12vw; font-weight: 900; line-height: .9; letter-spacing: -.04em;
-    background: linear-gradient(90deg, #ff9900, #ffd54f); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .countLabel { font-size: 1.8vw; color: #b9b4c9; margin: 1vh 0 3vh; }
-  .bars { display: flex; flex-direction: column; gap: .9vh; }
-  .bar { display: grid; grid-template-columns: 7vw 1fr 4vw; align-items: center; gap: 1vw; font-size: 1.35vw; font-weight: 700; }
-  .track { height: 2.2vh; background: #1a1528; border-radius: 99px; overflow: hidden; }
-  .fill { height: 100%; width: 0; border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
-  .num { text-align: right; color: #b9b4c9; }
-  .right { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .qrcard { background: #fff; border-radius: 2vw; padding: 2vw; box-shadow: 0 0 80px rgba(255,153,0,.35); }
-  #qr svg, #qr img { display: block; width: 28vw; height: 28vw; max-height: 52vh; max-width: 52vh; }
-  .scan { font-size: 2.4vw; font-weight: 900; margin-top: 2.4vh; }
-  .url { font-size: 1.3vw; color: #b9b4c9; margin-top: .6vh; font-family: ui-monospace, Menlo, monospace; }
-  #corner { position: fixed; top: 3vh; left: 3vw; font-size: 2vw; font-weight: 900; opacity: 0; transition: opacity .5s;
-    text-shadow: 0 2px 20px rgba(0,0,0,.8); }
+  .bar-top { display: flex; justify-content: space-between; font-size: 1vw; color: var(--muted); }
+  .bar-top b { color: var(--good); font-weight: 400; }
+  .main { flex: 1; display: grid; grid-template-columns: 1.35fr 1fr; gap: 4vw; align-items: center; }
+  h1 { font-size: 2.4vw; font-weight: 500; margin: 0 0 3vh; line-height: 1.2; }
+  #count { color: var(--accent); }
+  .countLabel { font-size: 1.15vw; color: var(--text-2); margin: 1.6vh 0 4vh; }
+  #bars { font-size: 1.1vw; line-height: 1.75; white-space: pre; color: var(--text-2); }
+  #bars .lead { color: var(--accent); }
+  .right { display: flex; flex-direction: column; align-items: flex-start; }
+  .qrcard { background: #fff; border-radius: 16px; padding: 1.4vw; }
+  #qr svg { display: block; width: 24vw; height: 24vw; max-width: 52vh; max-height: 52vh; }
+  .scan { font-size: 1.5vw; font-weight: 500; margin-top: 2.4vh; }
+  .url { font-size: 0.95vw; color: var(--muted); margin-top: .6vh; }
+  #cities { font-size: 1vw; color: var(--text-2); margin-top: 2.4vh; min-height: 1.5em; }
+  #log { font-size: 0.95vw; line-height: 1.7; color: var(--muted); min-height: 6.8em; border-top: 1px solid var(--line); padding-top: 1.6vh; }
+  #log .t { color: #5f5f64; }
+  #log .last { color: var(--text-2); }
+
+  #corner { position: fixed; top: 3vh; left: 3vw; font-size: 1.2vw; opacity: 0; transition: opacity .3s var(--ease); }
   #corner.on { opacity: 1; }
-  #label { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9vw;
-    font-weight: 900; text-align: center; pointer-events: none; text-shadow: 0 4px 40px rgba(0,0,0,.6); padding: 0 5vw; }
-  #remote { position: fixed; left: 0; right: 0; bottom: 3vh; display: flex; justify-content: center; flex-wrap: wrap; gap: 1vw;
-    padding: 0 4vw; }
-  .city { padding: 1vh 1.6vw; border-radius: 99px; background: rgba(20,16,34,.85); border: 2px solid #3a3150; font-size: 1.6vw;
-    font-weight: 800; transition: box-shadow .15s, border-color .15s; }
-  .remoteTitle { width: 100%; text-align: center; font-size: 1.2vw; letter-spacing: .2em; text-transform: uppercase; color: #8d86a3; }
-  #poster { position: fixed; inset: 0; display: none; background: #000; filter: brightness(0); }
-  #poster.on { display: block; }
-  #poster img { width: 100%; height: 100%; object-fit: contain; display: block; }
-  .pp { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
-    background:
-      radial-gradient(60% 50% at 50% 55%, rgba(255,153,0,.45), transparent 70%),
-      radial-gradient(30% 25% at 18% 22%, rgba(124,77,255,.35), transparent 70%),
-      radial-gradient(30% 25% at 82% 78%, rgba(0,176,255,.3), transparent 70%),
-      linear-gradient(#0d0a18, #000);
-    overflow: hidden; }
-  .pp::before { content: ''; position: absolute; inset: 0; opacity: .18;
-    background-image: linear-gradient(#ff9900 1px, transparent 1px), linear-gradient(90deg, #ff9900 1px, transparent 1px);
-    background-size: 6vw 6vw; mask-image: radial-gradient(70% 60% at 50% 50%, #000, transparent); -webkit-mask-image: radial-gradient(70% 60% at 50% 50%, #000, transparent); }
-  .pp .l0 { font-size: 1.8vw; letter-spacing: .5em; color: #ffcc80; font-weight: 800; position: relative; }
-  .pp .l1 { font-size: 11vw; font-weight: 900; line-height: .95; letter-spacing: -.03em; margin: 2vh 0; position: relative;
-    background: linear-gradient(180deg, #fff 20%, #ffb74d 70%, #ff9900); -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 0 3vw rgba(255,153,0,.55)); }
-  .pp .l2 { font-size: 3vw; font-weight: 900; letter-spacing: .3em; position: relative; }
-  .pp .l3 { font-size: 2vw; color: #b9b4c9; margin-top: 3vh; font-weight: 600; letter-spacing: .1em; position: relative; }
-  #power { position: fixed; left: 50%; bottom: 4vh; transform: translateX(-50%); display: none; align-items: center; gap: 1.2vw;
-    font-size: 1.6vw; font-weight: 800; color: #ffcc66; text-shadow: 0 2px 12px #000; }
-  #power.on { display: flex; }
-  #powerBar { width: 30vw; height: 1.2vh; border-radius: 99px; background: rgba(255,255,255,.12); overflow: hidden; }
-  #powerFill { height: 100%; width: 0; background: linear-gradient(90deg, #ff9900, #ffe082); }
-  #tugv { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 5vh;
-    background: radial-gradient(90% 70% at 50% 40%, #1a1428, #000); }
+  #label { display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 5vw; pointer-events: none; }
+  #label pre { font-size: 1.6vw; }
+  #label .text { font-size: 5vw; font-weight: 500; line-height: 1.15; }
+
+  #poster { display: none; flex-direction: column; align-items: center; justify-content: center; background: var(--bg-deep); }
+  #poster.on { display: flex; }
+  #posterArt { color: var(--accent); }
+  #power { position: fixed; left: 0; right: 0; bottom: 5vh; text-align: center; font-size: 1.25vw; color: var(--text-2); white-space: pre; display: none; }
+  #power.on { display: block; }
+  #power b { color: var(--accent); font-weight: 400; }
+
+  #tugv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4.5vh; background: var(--bg); }
   #tugv.on { display: flex; }
-  .tvTitle { font-size: 2vw; letter-spacing: .4em; font-weight: 900; color: #b9b4c9; }
-  #tvTimer { font-size: 9vw; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; }
-  .tvTeams { display: flex; width: 88vw; justify-content: space-between; align-items: flex-end; }
-  .tvTeam { font-size: 5vw; font-weight: 900; line-height: 1; }
-  .tvTeam small { display: block; font-size: 1.6vw; color: #b9b4c9; font-weight: 700; margin-top: 1vh; }
-  #tvRope { position: relative; width: 88vw; height: 5vh; border-radius: 99px; display: flex; overflow: hidden; }
-  #tvRope .h { flex: 1; opacity: .5; }
-  #tvMid { position: absolute; left: 50%; top: -2vh; bottom: -2vh; width: 3px; background: #fff; opacity: .6; }
-  #tvKnot { position: absolute; top: 50%; width: 3.2vw; height: 9vh; margin: -4.5vh 0 0 -1.6vw; border-radius: 1vw; background: #fff;
-    box-shadow: 0 0 40px #fff; left: 50%; }
-  #tvRopeWrap { position: relative; }
-  #tvHint { font-size: 1.8vw; color: #b9b4c9; font-weight: 700; }
-  #teaser { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4vh;
-    background: radial-gradient(90% 70% at 50% 40%, #1d1238, #000); text-align: center; padding: 0 6vw; }
+  .tv-title { font-size: 1.2vw; color: var(--muted); }
+  .teams { display: flex; justify-content: space-between; align-items: flex-end; width: 88vw; }
+  .team .art { font-size: 1vw; }
+  .team .pulls { font-size: 1.2vw; color: var(--text-2); margin-top: 1.4vh; }
+  #rope { font-size: 2vw; line-height: 1.25; }
+  #tvHint { font-size: 1.15vw; color: var(--muted); }
+
+  #winv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; background: var(--bg); }
+  #winv.on { display: flex; }
+  #winScore { font-size: 1.4vw; color: var(--text-2); }
+
+  #teaser { display: none; align-items: center; justify-content: center; background: var(--bg-deep); }
   #teaser.on { display: flex; }
-  .tz-stats { display: flex; gap: 2.5vw; }
-  .tz-card { background: rgba(255,255,255,.06); border: 2px solid #2c2640; border-radius: 1.4vw; padding: 2.4vh 2.6vw; min-width: 16vw;
-    opacity: 0; transform: translateY(20px); transition: opacity .6s, transform .6s; }
-  .tz-card.in { opacity: 1; transform: none; }
-  .tz-num { font-size: 5.4vw; font-weight: 900; line-height: 1; color: #ffcc66; font-variant-numeric: tabular-nums; }
-  .tz-lbl { font-size: 1.5vw; color: #b9b4c9; font-weight: 700; margin-top: 1vh; letter-spacing: .1em; text-transform: uppercase; }
-  .tz-zero .tz-num { color: #00e676; }
-  #tzQ { font-size: 3.2vw; font-weight: 900; line-height: 1.2; max-width: 80vw; opacity: 0; transition: opacity .8s; }
-  #tzCta { font-size: 1.9vw; font-weight: 800; color: #ff9900; opacity: 0; transition: opacity .8s; }
-  #tzQ.in, #tzCta.in { opacity: 1; }
-  #conn { position: fixed; right: 1.5vw; bottom: 1vh; font-size: .9vw; color: #4a445c; }
+  #term { font-size: 1.9vw; line-height: 1.7; white-space: pre; min-width: 46vw; }
+  #term .p { color: var(--muted); }
+  #term .zero { color: var(--accent); }
+  #tzQ { font-size: 2.2vw; font-weight: 500; line-height: 1.35; margin-top: 5vh; max-width: 66vw; white-space: normal; opacity: 0; transition: opacity .5s var(--ease); }
+  #tzCta { font-size: 1.4vw; color: var(--text-2); margin-top: 2vh; white-space: normal; opacity: 0; transition: opacity .5s var(--ease); }
+  #tzCta b { color: var(--accent); font-weight: 400; }
+  .in { opacity: 1 !important; }
+
+  #conn { position: fixed; right: 1.5vw; bottom: 1.2vh; font-size: .8vw; color: #4a4a4f; }
 </style>
 </head>
 <body>
-<div id="fx"></div>
-<div id="ui">
-  <div>
-    <div class="kicker" id="club"></div>
-    <h1 id="title"></h1>
-    <div class="count" id="count">0</div>
-    <div class="countLabel">phones connected · live on AWS</div>
-    <div class="bars" id="bars"></div>
+<div id="fx" class="layer"></div>
+
+<div id="ui" class="layer">
+  <div class="bar-top"><span id="prompt"></span><span id="liveTag">connecting…</span></div>
+  <div class="main">
+    <div>
+      <h1 id="title"></h1>
+      <pre class="art" id="count"></pre>
+      <div class="countLabel">phones connected</div>
+      <div id="bars"></div>
+    </div>
+    <div class="right">
+      <div class="qrcard"><div id="qr"></div></div>
+      <div class="scan">Scan to join the show</div>
+      <div class="url" id="url"></div>
+      <div id="cities"></div>
+    </div>
   </div>
-  <div class="right">
-    <div class="qrcard"><div id="qr"></div></div>
-    <div class="scan">📱 Scan to join the show</div>
-    <div class="url" id="url"></div>
-  </div>
+  <div id="log"></div>
 </div>
+
 <div id="corner"></div>
-<div id="label"></div>
-<div id="remote"></div>
-<div id="poster"></div>
-<div id="teaser">
-  <div class="tz-stats">
-    <div class="tz-card" id="tz1"><div class="tz-num" id="tzTotal">0</div><div class="tz-lbl">pulls counted</div></div>
-    <div class="tz-card" id="tz2"><div class="tz-num" id="tzPhones">0</div><div class="tz-lbl">phones</div></div>
-    <div class="tz-card" id="tz3"><div class="tz-num" id="tzSecs">0</div><div class="tz-lbl">seconds</div></div>
-    <div class="tz-card tz-zero" id="tz4"><div class="tz-num">0</div><div class="tz-lbl">servers</div></div>
+<div id="label" class="layer"></div>
+
+<div id="poster" class="layer"><pre class="art" id="posterArt"></pre></div>
+<div id="power"></div>
+
+<div id="tugv" class="layer">
+  <div class="tv-title">tug of war</div>
+  <pre class="art" id="tvTimer"></pre>
+  <div class="teams">
+    <div class="team"><pre class="art" id="tvA"></pre><div class="pulls" id="tvAn"></div></div>
+    <div class="team" style="text-align:right"><pre class="art" id="tvB"></pre><div class="pulls" id="tvBn"></div></div>
   </div>
-  <div id="tzQ"></div>
-  <div id="tzCta"></div>
+  <pre class="art" id="rope"></pre>
+  <div id="tvHint">tap pull on your phone, as fast as you can</div>
 </div>
-<div id="tugv">
-  <div class="tvTitle">🪢 TUG OF WAR</div>
-  <div id="tvTimer">3</div>
-  <div class="tvTeams"><div class="tvTeam" id="tvA"></div><div class="tvTeam" id="tvB" style="text-align:right"></div></div>
-  <div id="tvRopeWrap"><div id="tvRope"><div class="h" id="tvRA"></div><div class="h" id="tvRB"></div></div><div id="tvMid"></div><div id="tvKnot"></div></div>
-  <div id="tvHint">Tap PULL on your phone as fast as you can!</div>
+
+<div id="winv" class="layer"><pre class="art" id="winArt"></pre><div id="winScore"></div></div>
+
+<div id="teaser" class="layer">
+  <div><pre class="art" id="term"></pre><div id="tzQ"></div><div id="tzCta"></div></div>
 </div>
-<div id="power"><span>⚡</span><div id="powerBar"><div id="powerFill"></div></div><span id="powerTxt">0%</span></div>
-<div id="conn">connecting…</div>
+
+<div id="conn"></div>
 
 <script src="config.js"></script>
 <script src="show-config.js"></script>
+<script src="ascii.js"></script>
 <script src="effects.js"></script>
 <script src="client.js"></script>
 <script src="vendor/qrcode.js"></script>
@@ -141,8 +125,21 @@
 (function () {
   const S = window.SHOW;
   const $ = (id) => document.getElementById(id);
-  $('club').textContent = S.club;
+  const VW = () => window.innerWidth / 100, VH = () => window.innerHeight / 100;
+  const region = (() => { const m = String(window.WS_URL || '').match(/execute-api\.([a-z0-9-]+)\./); return m ? m[1] : 'local'; })();
   $('title').textContent = S.title;
+  $('prompt').textContent = 'aws-cloud-club@rgu:~$ ./light-show --live';
+
+  // block letters sized to a box (width and height in px)
+  function art(el, text, w, h, rows) {
+    rows = rows || ASCII.banner(text);
+    const key = rows.join('|') + Math.round(w) + 'x' + Math.round(h);
+    if (el.dataset.k === key) return;
+    el.dataset.k = key;
+    const cols = Math.max(1, ...rows.map((r) => r.length));
+    el.style.fontSize = Math.min(w / (cols * 0.6), h / rows.length) + 'px';
+    el.textContent = rows.join('\n');
+  }
 
   const joinUrl = location.origin + location.pathname.replace(/screen\.html$/, '');
   $('url').textContent = joinUrl.replace(/^https?:\/\//, '');
@@ -152,181 +149,196 @@
     $('qr').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
   } catch (e) { $('qr').textContent = joinUrl; }
 
-  // power-up poster (custom image, or the built-in one)
+  // ----- the Power-Up poster, as characters that boot up -----
+  let posterRows = [], reveal = null;
   (function buildPoster() {
-    const el = $('poster');
-    const builtIn = () => {
-      const d = document.createElement('div'); d.className = 'pp';
-      (S.posterLines || []).forEach((txt, i) => { const x = document.createElement('div'); x.className = 'l' + i; x.textContent = txt; d.appendChild(x); });
-      el.innerHTML = ''; el.appendChild(d);
+    const fromText = () => {
+      const rows = [];
+      (S.posterBanner || ['AWS', 'CLOUD CLUB']).forEach((line, i) => { if (i) rows.push(''); rows.push(...ASCII.banner(line)); });
+      const w = Math.max(...rows.map((r) => r.length));
+      const centered = rows.map((r) => ' '.repeat(Math.floor((w - r.length) / 2)) + r);
+      const cap = S.posterCaption || '';
+      if (cap) { centered.push('', '', ' '.repeat(Math.max(0, Math.floor((w - cap.length) / 2))) + cap); }
+      posterRows = centered; reveal = ASCII.Reveal(posterRows);
     };
     if (S.poster) {
       const img = new Image();
-      img.onload = () => { el.innerHTML = ''; el.appendChild(img); };
-      img.onerror = builtIn;
+      img.onload = () => { posterRows = ASCII.fromImage(img, 140, 52); reveal = ASCII.Reveal(posterRows); };
+      img.onerror = fromText;
       img.src = S.poster;
-    } else builtIn();
+    } else fromText();
   })();
 
-  // department bars
-  const bars = {};
-  S.departments.forEach((d) => {
-    const row = document.createElement('div'); row.className = 'bar';
-    const name = document.createElement('div'); name.textContent = d.id;
-    const track = document.createElement('div'); track.className = 'track';
-    const fill = document.createElement('div'); fill.className = 'fill'; fill.style.background = d.color;
-    track.appendChild(fill);
-    const num = document.createElement('div'); num.className = 'num'; num.textContent = '0';
-    row.append(name, track, num); $('bars').appendChild(row);
-    bars[d.id] = { fill, num };
-  });
-
-  let shown = 0, target = 0, cities = {};
-  function tick() {
-    shown += (target - shown) * 0.15;
-    if (Math.abs(target - shown) < 0.5) shown = target;
-    $('count').textContent = Math.round(shown);
-    $('corner').textContent = Math.round(shown) + ' phones live';
+  // ----- the server-log ticker (signature) -----
+  const log = [];
+  function addLog(text) {
+    log.push({ at: client ? client.serverNow() : Date.now(), text });
+    while (log.length > 4) log.shift();
+    $('log').innerHTML = log.map((l, i) =>
+      `<div class="${i === log.length - 1 ? 'last' : ''}"><span class="t">[${ASCII.stamp(l.at)}]</span> ${esc(l.text)}</div>`).join('');
   }
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  function renderCities(color) {
+  let shown = 0, target = 0, cities = {}, lastStats = null;
+  function drawBars(m) {
+    const ds = S.departments.map((d) => ({ id: d.id, n: m.depts[d.id] || 0 }));
+    const max = Math.max(1, ...ds.map((d) => d.n));
+    const lead = ds.reduce((a, b) => (b.n > a.n ? b : a), ds[0]);
+    $('bars').innerHTML = ds.map((d) => {
+      const line = `${d.id.padEnd(7)} ${ASCII.bar(d.n / max, 28)} ${String(d.n).padStart(4)}`;
+      return d.n && d === lead ? `<span class="lead">${esc(line)}</span>` : esc(line);
+    }).join('\n');
+  }
+  function onStats(m) {
+    target = m.phones;
+    drawBars(m);
+    cities = m.cities || {};
     const names = Object.keys(cities);
-    const box = $('remote');
-    if (!names.length) { box.innerHTML = ''; return; }
-    const key = names.map((n) => n + cities[n]).join('|');
-    if (box.dataset.key !== key) {
-      box.dataset.key = key;
-      box.innerHTML = '';
-      const t = document.createElement('div'); t.className = 'remoteTitle'; t.textContent = '🌍 Also live from';
-      box.appendChild(t);
-      names.forEach((n) => {
-        const c = document.createElement('div'); c.className = 'city';
-        c.textContent = '📍 ' + n + (cities[n] > 1 ? ' ×' + cities[n] : '');
-        box.appendChild(c);
-      });
+    $('cities').textContent = names.length ? 'also live from  ' + names.map((n) => n.toLowerCase() + (cities[n] > 1 ? ' ×' + cities[n] : '')).join(' · ') : '';
+    if (lastStats) {
+      const d = m.phones - lastStats.phones;
+      if (d > 0) addLog(`+${d} phone${d > 1 ? 's' : ''} joined · ${m.phones} connected`);
+      if (d < 0) addLog(`${-d} phone${d < -1 ? 's' : ''} left · ${m.phones} connected`);
+      names.filter((n) => !(lastStats.cities || {})[n]).forEach((n) => addLog(`new city on the line: ${n.toLowerCase()}`));
     }
-    box.querySelectorAll('.city').forEach((c) => {
-      c.style.borderColor = color || '#3a3150';
-      c.style.boxShadow = color ? '0 0 30px ' + color : 'none';
-    });
+    lastStats = m;
   }
 
-  const client = ShowClient({
+  let client = null;
+  client = ShowClient({
     role: 'screen',
-    onStatus: (s) => ($('conn').textContent = s === 'open' ? '● live' : s + '…'),
+    onStatus: (s) => {
+      $('liveTag').innerHTML = s === 'open' ? `<b>●</b> live · ${region}` : s + '…';
+      $('conn').textContent = s === 'open' ? '' : s + '…';
+      if (s === 'open') addLog(`screen connected to aws · ${region}`);
+    },
     onMessage: (m) => {
-      if (m.type === 'stats') {
-        target = m.phones;
-        const max = Math.max(1, ...Object.values(m.depts));
-        S.departments.forEach((d) => {
-          const n = m.depts[d.id] || 0;
-          bars[d.id].fill.style.width = (n / max) * 100 + '%';
-          bars[d.id].num.textContent = n;
-        });
-        cities = m.cities || {};
-      } else if (m.type === 'effect') player.push(m);
+      if (m.type === 'stats') onStats(m);
+      else if (m.type === 'effect') { player.push(m); if (m.effect.name !== 'off') addLog(`effect "${m.effect.name}" scheduled for ${ASCII.stamp(m.at)}`); }
       else if (m.type === 'charge') charge = m;
       else if (m.type === 'tug') tug = m;
     },
   });
   const player = EffectPlayer(client);
   setInterval(() => client.send({ action: 'stats' }), 1500);
-  let charge = { level: 0, tappers: 0 }, curName = null, powerShown = 0, flick = 1, flickAt = 0;
+  let charge = { level: 0, tappers: 0 }, curName = null, powerShown = 0;
   setInterval(() => { if (curName === 'charge' || curName === 'powered') client.send({ action: 'charge' }); }, 400);
   let tug = null, tugPos = 0;
   setInterval(() => { if (curName === 'tug') client.send({ action: 'tugstate' }); }, 300);
 
-  const LABELS = { wave: '🌊', sparkle: '✨', team: 'TEAM COLOURS', countdown: '', rainbow: '', strobe: '', pulse: '', color: '' };
   const screenMe = { zone: 'center', dept: null, seed: 7 };
+  const LABELS = { wave: 'wave', sparkle: 'stars', team: 'team colours', rainbow: '', strobe: '', pulse: '', color: '' };
+  const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
+
   function loop() {
-    tick();
+    shown += (target - shown) * 0.15;
+    if (Math.abs(target - shown) < 0.5) shown = target;
+    art($('count'), String(Math.round(shown)), 44 * VW(), 26 * VH());
+    $('corner').textContent = Math.round(shown) + ' phones live';
+
     const { effect, t } = player.frame();
     let f = Effects.render(effect, t, screenMe);
     let label = f.big;
-    let glow = null;
-    if (effect && effect.name === 'team') { f = { bg: '#000' }; label = 'TEAM COLOURS 🎨'; }
+    if (effect && effect.name === 'team') { f = { bg: 'var(--bg)' }; label = 'team colours'; }
     if (effect && effect.name === 'spotlight') {
       const col = Effects.deptColor(effect.dept);
-      f = { bg: Effects.dim(col, 0.65 + 0.35 * Math.sin(t / 160)), fg: '#000' };
-      label = effect.dept + ' 📣';
+      f = { bg: Effects.dim(col, 0.65 + 0.35 * Math.sin(t / 160)), fg: '#141415' };
+      label = effect.dept;
     }
     const name = effect ? effect.name : null;
     if (name === 'charge' && curName !== 'charge') { charge = { level: 0, tappers: 0 }; powerShown = 0; }
     curName = name;
+
+    // Power-Up: the poster boots up character by character
     const posterMode = name === 'charge' || name === 'powered';
     $('poster').classList.toggle('on', posterMode);
     $('power').classList.toggle('on', name === 'charge');
-    if (posterMode) {
-      label = '';
-      f = { bg: '#000' };
-      const target = name === 'powered' ? 1 : charge.level;
-      powerShown += (target - powerShown) * 0.08;
-      let b = powerShown <= 0.002 ? 0 : 0.03 + 0.97 * Math.pow(powerShown, 1.25);
-      // a weak "bulb" flickers until it's nearly fully powered
-      if (name === 'charge' && powerShown < 0.85 && powerShown > 0.002) {
-        if (performance.now() > flickAt) { flick = Math.random() < 0.25 ? 0.55 + Math.random() * 0.3 : 1; flickAt = performance.now() + 60 + Math.random() * 140; }
-        b *= flick;
-      }
-      if (name === 'powered') b = t < 450 ? 2.2 : 1.1 + 0.08 * Math.sin(t / 150);
-      $('poster').style.filter = `brightness(${b.toFixed(3)})`;
-      $('powerFill').style.width = (powerShown * 100).toFixed(1) + '%';
-      $('powerTxt').textContent = Math.floor(powerShown * 100) + '% · ' + (charge.tappers || 0) + ' powering';
+    if (posterMode && reveal) {
+      label = ''; f = { bg: 'var(--bg-deep)' };
+      const goal = name === 'powered' ? 1 : charge.level;
+      powerShown += (goal - powerShown) * 0.08;
+      const lvl = name === 'powered' ? 1 : powerShown;
+      const cols = Math.max(...posterRows.map((r) => r.length));
+      const el = $('posterArt');
+      el.style.fontSize = Math.min(88 * VW() / (cols * 0.6), 74 * VH() / posterRows.length) + 'px';
+      el.textContent = reveal.render(lvl, performance.now());
+      el.style.color = name === 'powered' && t < 450 ? '#ffffff' : '';
+      const pct = String(Math.floor(powerShown * 100)).padStart(3, ' ');
+      $('power').innerHTML = `power  [<b>${ASCII.bar(powerShown, 32)}</b>] ${pct}%   ${charge.tappers || 0} tapping`;
     }
-    // tug of war view
+
+    // Tug of war: block-letter timer and a rope made of characters
     const tugOn = name === 'tug';
     $('tugv').classList.toggle('on', tugOn);
     if (tugOn) {
-      label = ''; f = { bg: '#000' };
+      label = ''; f = { bg: 'var(--bg)' };
       const teams = Effects.tugTeams(effect);
       const now = client.serverNow();
       const sc = tug && tug.startsAt === effect.startsAt ? tug : { a: 0, b: 0, goal: effect.goal || 1 };
-      $('tvA').innerHTML = ''; $('tvB').innerHTML = '';
-      [['tvA', teams.A, sc.a], ['tvB', teams.B, sc.b]].forEach(([el, tm, n]) => {
-        const d = $(el); d.style.color = tm.color; d.textContent = tm.name;
-        const sm = document.createElement('small'); sm.textContent = n + ' pulls'; d.appendChild(sm);
-      });
-      $('tvRA').style.background = teams.A.color; $('tvRB').style.background = teams.B.color;
-      const target = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
-      tugPos += (target - tugPos) * 0.15;
-      $('tvKnot').style.left = (50 + tugPos * 47) + '%';
-      if (now < effect.startsAt) { $('tvTimer').textContent = Math.ceil((effect.startsAt - now) / 1000); $('tvTimer').style.color = '#ffcc66'; }
-      else if (now < effect.endsAt) { const r = Math.ceil((effect.endsAt - now) / 1000); $('tvTimer').textContent = r + 's'; $('tvTimer').style.color = r <= 5 ? '#ff1744' : '#fff'; }
-      else { $('tvTimer').textContent = 'TIME!'; $('tvTimer').style.color = '#fff'; }
+      art($('tvA'), teams.A.name, 30 * VW(), 10 * VH()); $('tvA').style.color = teams.A.color;
+      art($('tvB'), teams.B.name, 30 * VW(), 10 * VH()); $('tvB').style.color = teams.B.color;
+      $('tvAn').textContent = fmt(sc.a) + ' pulls'; $('tvBn').textContent = fmt(sc.b) + ' pulls';
+      let timer, col = 'var(--text)';
+      if (now < effect.startsAt) { timer = String(Math.ceil((effect.startsAt - now) / 1000)); col = 'var(--accent)'; }
+      else if (now < effect.endsAt) { const r = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`; if (r <= 5) col = 'var(--red)'; }
+      else timer = 'TIME';
+      art($('tvTimer'), timer, 50 * VW(), 18 * VH()); $('tvTimer').style.color = col;
+      const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
+      tugPos += (goal - tugPos) * 0.15;
+      const W = 61, mid = (W - 1) / 2, k = Math.round(mid + tugPos * mid);
+      $('rope').innerHTML =
+        `${' '.repeat(mid + 1)}<span class="muted">│</span>\n` +
+        `<span style="color:${teams.A.color}">${'═'.repeat(k)}</span>[█]<span style="color:${teams.B.color}">${'═'.repeat(W - 1 - k)}</span>\n` +
+        `${' '.repeat(mid + 1)}<span class="muted">│</span>`;
     } else tugPos = 0;
-    // after the result: the stats reveal + curiosity hook
+
+    // result, then the terminal readout with the curiosity hook
     const teaserOn = name === 'tugwin' && t >= 5000;
+    const winOn = name === 'tugwin' && !teaserOn;
+    $('winv').classList.toggle('on', winOn);
     $('teaser').classList.toggle('on', teaserOn);
+    if (winOn) {
+      label = ''; f = { bg: 'var(--bg)' };
+      const teams = Effects.tugTeams(effect);
+      const draw = effect.winner === 'draw';
+      art($('winArt'), draw ? 'DRAW' : teams[effect.winner].name + ' WINS', 86 * VW(), 30 * VH());
+      $('winArt').style.color = t < 400 ? '#ffffff' : draw ? 'var(--text)' : teams[effect.winner].color;
+      $('winScore').textContent = `${teams.A.name.toLowerCase()} ${fmt(effect.scoreA)}  ·  ${fmt(effect.scoreB)} ${teams.B.name.toLowerCase()}`;
+    }
     if (teaserOn) {
-      label = ''; f = { bg: '#000' };
+      label = ''; f = { bg: 'var(--bg-deep)' };
       const T = S.tugTeaser || {};
       const total = (effect.scoreA || 0) + (effect.scoreB || 0);
-      const fill = (x) => String(x || '').replace('{total}', total.toLocaleString('en-IN')).replace('{phones}', effect.phones || 'all these').replace('{seconds}', effect.seconds || '');
-      const k = Math.min(1, (t - 5000) / 1500); // numbers count up over 1.5 s
-      $('tzTotal').textContent = Math.round(total * k).toLocaleString('en-IN');
-      $('tzPhones').textContent = Math.round((effect.phones || 0) * k);
-      $('tzSecs').textContent = Math.round((effect.seconds || 0) * k);
-      ['tz1', 'tz2', 'tz3'].forEach((id, i) => $(id).classList.toggle('in', t >= 5000 + i * 250));
-      $('tz4').classList.toggle('in', t >= 7200);
-      $('tzQ').textContent = fill(T.question); $('tzQ').classList.toggle('in', t >= 8500);
-      $('tzCta').textContent = fill(T.spoiler) + '  ·  ' + fill(T.cta); $('tzCta').classList.toggle('in', t >= 10000);
-    }
-    if (name === 'tugwin' && !teaserOn) {
-      const teams = Effects.tugTeams(effect);
-      if (effect.winner === 'draw') { f = { bg: Effects.dim('#ffffff', 0.35), fg: '#000' }; label = "IT'S A DRAW!"; }
-      else {
-        const w = teams[effect.winner];
-        f = { bg: t < 400 ? '#ffffff' : Effects.dim(w.color, 0.65 + 0.3 * Math.sin(t / 160)), fg: '#000' };
-        label = w.name + ' WINS 🏆';
-      }
-    }
+      const fill = (x) => String(x || '').replace('{total}', fmt(total)).replace('{phones}', effect.phones || 'all these').replace('{seconds}', effect.seconds || '');
+      const tt = t - 5000;
+      const cmd = 'light-show stats --last-round';
+      const typed = cmd.slice(0, Math.max(0, Math.floor(tt / 35)));
+      const k = Math.min(1, Math.max(0, (tt - 1300) / 1200));
+      const rows = [`<span class="p">$</span> ${typed}${typed.length < cmd.length ? '<span class="cursor"></span>' : ''}`];
+      if (tt > 1300) rows.push('', `pulls counted   ${fmt(Math.round(total * k)).padStart(9)}`);
+      if (tt > 1600) rows.push(`phones          ${String(Math.round((effect.phones || 0) * k)).padStart(9)}`);
+      if (tt > 1900) rows.push(`seconds         ${String(Math.round((effect.seconds || 0) * k)).padStart(9)}`);
+      if (tt > 3000) rows.push(`servers         <span class="zero">${'0'.padStart(9)}</span>`);
+      $('term').innerHTML = rows.join('\n');
+      $('tzQ').textContent = fill(T.question); $('tzQ').classList.toggle('in', tt >= 4000);
+      $('tzCta').innerHTML = `${esc(fill(T.spoiler))}  ·  <b>${esc(fill(T.cta))}</b>`; $('tzCta').classList.toggle('in', tt >= 5500);
+    } else { $('tzQ').classList.remove('in'); $('tzCta').classList.remove('in'); }
+
     const active = effect && effect.name !== 'off';
-    $('fx').style.background = f.bg || '#000';
+    $('fx').style.background = f.bg || 'var(--bg)';
     $('ui').classList.toggle('hide', !!active);
-    $('corner').classList.toggle('on', !!active && !posterMode && !tugOn && !teaserOn);
-    $('label').textContent = active ? (label || LABELS[effect.name] || '') : '';
-    $('label').style.color = f.fg || '#fff';
-    if (active && f.bg && f.bg !== '#000' && f.bg !== 'rgb(0,0,0)') glow = f.bg;
-    renderCities(glow);
+    $('corner').classList.toggle('on', !!active && !posterMode && !tugOn && !teaserOn && !winOn);
+    const lab = active ? (label || LABELS[effect.name] || '') : '';
+    const L = $('label');
+    if (L.dataset.l !== lab) {
+      L.dataset.l = lab;
+      L.innerHTML = '';
+      if (lab && /^[A-Z0-9 &%.:?\/-]{1,8}$/.test(lab)) { const p = document.createElement('pre'); p.className = 'art'; L.appendChild(p); }
+      else if (lab) { const d = document.createElement('div'); d.className = 'text'; d.textContent = lab; L.appendChild(d); }
+    }
+    const p = L.querySelector('pre');
+    if (p) art(p, lab, 80 * VW(), 40 * VH());
+    L.style.color = f.fg || 'var(--text)';
     requestAnimationFrame(loop);
   }
   requestAnimationFrame(loop);

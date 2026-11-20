@@ -1,6 +1,6 @@
 // ✏️ EDIT THIS FILE to customise the show (departments, colours, club link).
 window.SHOW = {
-  title: '300 Phones. One Button.',
+  title: '300 phones, one button',
   // What the big display is called on phones during Power-Up ('SCREEN', 'TV' or 'PROJECTOR')
   screenWord: 'SCREEN',
   club: 'AWS Cloud Club · RGU',
@@ -10,14 +10,16 @@ window.SHOW = {
   // Shown on phones and the big screen right after a Tug of War result. {total} {phones} {seconds} {mine} are filled in.
   tugTeaser: {
     question: 'How did AWS count {total} pulls from {phones} phones without missing a single one?',
-    spoiler: 'Spoiler: there is no server. 🤯',
+    spoiler: 'Spoiler: there is no server',
     cta: 'Find out at the AWS Cloud Club',
   },
 
   // Power-up poster shown on the projector. Put your image in the web/ folder (e.g. web/poster.jpg)
   // and write its name here. Leave empty to use the built-in "AWS CLOUD CLUB" poster.
   poster: '',
-  posterLines: ['RATHINAM GLOBAL UNIVERSITY', 'AWS CLOUD CLUB', 'INAUGURATION · 2026', 'Build. Deploy. Scale.'],
+  // Built-in poster: big block letters (one line each) + a caption under them.
+  posterBanner: ['AWS', 'CLOUD CLUB'],
+  posterCaption: 'Rathinam Global University · inauguration 2026',
 
   departments: [
     { id: 'CSE',   color: '#2979ff' },
@@ -31,8 +33,8 @@ window.SHOW = {
   ],
 
   zones: [
-    { id: 'left',   label: '⬅️ Left side' },
-    { id: 'center', label: '⬆️ Middle' },
-    { id: 'right',  label: '➡️ Right side' },
+    { id: 'left',   label: 'Left side' },
+    { id: 'center', label: 'Middle' },
+    { id: 'right',  label: 'Right side' },
   ],
 };

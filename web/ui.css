@@ -1,0 +1,41 @@
+/* Shared design tokens. Direction: the terminal. Graphite neutrals, one accent (AWS orange), mono type.
+   Built following unslop by Damir Sokolovsky (@heydamir), CC BY 4.0. */
+/* JetBrains Mono NL (no ligatures), bundled so it works without internet access to Google. SIL OFL 1.1. */
+@font-face { font-family: 'JetBrains Mono'; src: url('vendor/fonts/JetBrainsMonoNL-Regular.woff2') format('woff2'); font-weight: 400; font-display: block; }
+@font-face { font-family: 'JetBrains Mono'; src: url('vendor/fonts/JetBrainsMonoNL-Medium.woff2') format('woff2'); font-weight: 500 600; font-display: block; }
+
+:root {
+  --bg-deep: #0f0f10;
+  --bg: #141415;
+  --card: #19191b;
+  --raised: #232325;
+  --line: rgba(237, 237, 237, 0.08);
+  --line-strong: rgba(237, 237, 237, 0.16);
+  --text: #ededed;
+  --text-2: #a1a1a6;
+  --muted: #85858b;
+  --accent: #ff9900;          /* AWS orange: primary action, the key figure, the poster */
+  --accent-ink: #1a1206;      /* text on the accent */
+  --red: #e5484d;             /* tug team RED */
+  --blue: #3e8bff;            /* tug team BLUE */
+  --good: #4cc38a;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--mono); font-size: 15px; line-height: 1.5; }
+button { font-family: var(--mono); }
+
+/* block-letter art: line-height 1 so the box-drawing characters join up */
+.art { font-family: var(--mono); white-space: pre; line-height: 1; margin: 0; font-weight: 400; letter-spacing: 0; }
+
+.muted { color: var(--muted); }
+.dim { color: var(--text-2); }
+.accent { color: var(--accent); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* blinking cursor: only used where something is live */
+.cursor { display: inline-block; width: 0.6em; height: 1.1em; vertical-align: -0.2em; background: currentColor; margin-left: 2px; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
