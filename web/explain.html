@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How the light show works</title>
+<link rel="stylesheet" href="ui.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0f0f10; color: var(--text); font-family: var(--mono); }
+  #c { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: pointer; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+  .lbl { position: absolute; left: 0; top: 0; white-space: nowrap; transition: opacity .4s var(--ease);
+         border-left: 2px solid var(--accent); padding: 2px 0 2px 10px; margin-top: -8px; }
+  .lbl b { display: block; font-weight: 500; font-size: clamp(14px, 1.35vw, 22px); color: var(--text); }
+  .lbl span { display: block; font-size: clamp(11px, 0.95vw, 16px); color: var(--muted); }
+
+  #text { position: fixed; left: 5vw; bottom: 8vh; max-width: min(46rem, 56vw); pointer-events: none; }
+  #kicker { color: var(--accent); font-size: clamp(12px, 1.05vw, 18px); letter-spacing: .08em; text-transform: uppercase; }
+  #h { margin: .35em 0 .3em; font-weight: 500; font-size: clamp(28px, 3.6vw, 64px); line-height: 1.08; letter-spacing: -.01em; }
+  #p { margin: 0; color: var(--text-2); font-size: clamp(15px, 1.35vw, 24px); line-height: 1.45; }
+  #text.in #kicker, #text.in #h, #text.in #p { animation: rise .7s var(--ease) both; }
+  #text.in #h { animation-delay: .08s; } #text.in #p { animation-delay: .16s; }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  #top { position: fixed; left: 5vw; right: 5vw; top: 5vh; display: flex; justify-content: space-between; align-items: center;
+         color: var(--muted); font-size: clamp(11px, .95vw, 16px); pointer-events: none; }
+  #ticks { display: flex; gap: 6px; }
+  #ticks i { width: 22px; height: 3px; background: #2a2a2e; display: block; transition: background .4s; }
+  #ticks i.on { background: var(--accent); }
+
+  #big { position: fixed; right: 5vw; bottom: 8vh; text-align: right; color: var(--text-2); white-space: pre;
+         font-size: clamp(14px, 1.3vw, 22px); pointer-events: none; }
+  #big.fired { color: var(--accent); font-size: clamp(22px, 2.4vw, 42px); }
+  #big.small { color: var(--muted); }
+  #big.code { text-align: left; color: var(--text-2); background: rgba(15,15,16,.85); border: 1px solid #2a2a2e; padding: 14px 18px; line-height: 1.55; }
+
+  #hint { position: fixed; right: 5vw; top: calc(5vh + 28px); color: #55555b; font-size: 12px; pointer-events: none; transition: opacity 1s; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="labels"></div>
+<div id="top"><span>light-show · how it works</span><span id="count">00 / 09</span></div>
+<div id="hint">→ next · ← back · f fullscreen</div>
+<div id="text"><div id="kicker"></div><h1 id="h"></h1><p id="p"></p></div>
+<div id="big"></div>
+<div style="position:fixed;left:5vw;top:calc(5vh + 26px)" id="ticks"></div>
+<script type="module" src="explain.js"></script>
+<script>setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = 0; }, 9000);</script>
+</body>
+</html>
