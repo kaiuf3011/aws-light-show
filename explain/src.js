@@ -8,6 +8,7 @@ const C = {
   accent: 0xff9900, red: 0xe5484d, blue: 0x3e8bff, phone: 0x2c2c31, white: 0xededed,
 };
 const TEMPLATE_LINES = typeof __TEMPLATE_LINES__ !== 'undefined' ? __TEMPLATE_LINES__ : 200;
+const LIVE_STEP = 9;
 const STEPS = [
   { kicker: 'aws cloud club · rgu', h: '300 phones, one button', p: 'What actually happened when you tapped. Five pieces, zero servers to manage.', cam: [-2, 11.5, 20], at: [-2, 0.4, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
   { kicker: '01 · the menu', h: 'Your phone opened a page from S3', p: 'Amazon S3 stores the website as plain files. Scanning the QR code just downloads them, nothing is running.', cam: [-15.5, 7.5, 9.5], at: [-11.2, 0.6, 0.6], labels: ['phones', 's3'] },
@@ -18,7 +19,8 @@ const STEPS = [
   { kicker: '06 · the same moment', h: 'Fire at the same instant, not on arrival', p: 'Messages land at slightly different times. Every phone synced its clock with AWS, so they all wait and fire together.', cam: [-10, 9.5, 11], at: [-10.4, 0, 1.4], labels: [] },
   { kicker: '07 · scaling', h: '300 people tapping at once', p: 'AWS starts more copies of the chef by itself. The database adds every pull in one unbreakable step, so none are lost.', cam: [-0.5, 9, 14], at: [0, 0.6, 0], labels: ['phones', 'gw', 'lambda', 'db'] },
   { kicker: '08 · infrastructure as code', h: `All of this is one ${TEMPLATE_LINES}-line file`, p: 'I described the five pieces in a template. AWS built them in about three minutes, and one command deletes them.', cam: [-2.5, 12, 19], at: [-2.5, 0.6, 0], labels: ['s3', 'gw', 'lambda', 'db'] },
-  { kicker: '09 · the bill', h: 'Servers I manage: 0', p: 'All of tonight cost less than a cup of chai. Want to build this yourself? That is what the AWS Cloud Club is for.', cam: [-2.5, 15, 25], at: [-2.5, 0, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
+  { kicker: '09 · live', h: 'This is AWS, right now', p: 'Every dot is a real message from a phone in this room. Watch what happens when I press a button.', cam: [-3.2, 12.5, 21], at: [-3.2, 0.3, 0.4], labels: ['phones', 'gw', 'lambda', 'db', 'you'] },
+  { kicker: '10 · the bill', h: 'Servers I manage: 0', p: 'All of tonight cost less than a cup of chai. Want to build this yourself? That is what the AWS Cloud Club is for.', cam: [-2.5, 15, 25], at: [-2.5, 0, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
 ];
 
 // ---------- live data from the real backend (falls back to a simulation) ----------
@@ -32,23 +34,143 @@ const LIVE = { on: false, phones: 0, calls: null, rate: 0, rtt: null, offset: 0,
     onStatus: (st) => { LIVE.on = st === 'open'; liveTag(); },
     onMessage: (msg) => {
       if (quiz) quiz.onMessage(msg);
-      if (msg.type === 'effect' && player) player.push(msg);
+      if (msg.type === 'effect') { if (player) player.push(msg); liveBroadcast(msg.effect, msg.at); }
+      if (msg.type === 'charge') LIVE.charge = msg;
+      if (msg.type === 'tug') LIVE.tug = msg;
       if (msg.type !== 'stats') return;
-      LIVE.phones = msg.phones || 0;
-      if (msg.calls != null) {
-        if (prev && msg.now > prev.now && msg.calls >= prev.calls) LIVE.rate = (msg.calls - prev.calls) / ((msg.now - prev.now) / 1000);
-        prev = { calls: msg.calls, now: msg.now }; LIVE.calls = msg.calls;
-      }
       LIVE.rtt = client.bestRtt(); LIVE.offset = client.offset();
-      liveTag(); liveText();
+      liveStats(msg);
     },
   });
+  LIVE.client = client;
   setInterval(() => client.send({ action: 'stats' }), 1500);
+  setInterval(() => {   // on the live step, also follow whatever game is running
+    if (typeof step === 'undefined' || step !== LIVE_STEP) return;
+    const n = LIVE.effect && LIVE.effect.name;
+    if (n === 'charge' || n === 'powered') client.send({ action: 'charge' });
+    if (n === 'tug' || n === 'tugwin') client.send({ action: 'tugstate' });
+  }, 700);
   if (typeof window.EffectPlayer === 'function' && typeof window.QuizTV === 'function') {
     player = window.EffectPlayer(client); quiz = window.QuizTV(client);
-    LIVE.quizFrame = () => quiz.frame(player.frame().effect);
+    LIVE.quizFrame = () => { const f = player.frame(); LIVE.effect = f.effect; quiz.frame(f.effect); };
   }
 })();
+// ---------- live feed: real events become packets, numbers and log lines ----------
+const LV = { prevPhones: null, prevCalls: null, prevNow: 0, runBudget: 0, runsSince: 0, runsT: 0, lit: 0, log: [], fireAt: 0, fireFx: null, rows: 0 };
+const serverNow = () => (LIVE.client ? LIVE.client.serverNow() : Date.now());
+const stampOf = (ms) => { const d = new Date(ms); const p = (n, w = 2) => String(n).padStart(w, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${Math.floor(d.getMilliseconds() / 100)}`; };
+function logLine(txt) { LV.log.push({ t: serverNow(), txt }); if (LV.log.length > 7) LV.log.shift(); }
+function liveStats(msg) {
+  const phones = msg.phones || 0;
+  LIVE.phones = phones; LV.rows = msg.rows || LV.rows;
+  if (msg.calls != null) {
+    if (LV.prevCalls != null && msg.now > LV.prevNow && msg.calls >= LV.prevCalls) {
+      const d = msg.calls - LV.prevCalls;
+      LIVE.rate = d / ((msg.now - LV.prevNow) / 1000);
+      LV.runBudget = Math.min(400, LV.runBudget + d); LV.runsSince += d;
+    }
+    LV.prevCalls = msg.calls; LV.prevNow = msg.now; LIVE.calls = msg.calls;
+  }
+  if (LV.prevPhones != null && phones !== LV.prevPhones) {
+    const d = phones - LV.prevPhones;
+    if (d > 0) { logLine(`+${d} phone${d > 1 ? 's' : ''} joined → ${d} new row${d > 1 ? 's' : ''} in DynamoDB`); liveJoins(d); }
+    else logLine(`${-d} phone${d < -1 ? 's' : ''} left · row${d < -1 ? 's' : ''} deleted`);
+  }
+  if (LV.prevPhones == null) LV.lit = Math.min(N, phones);
+  LV.prevPhones = phones;
+  liveTag(); liveText();
+}
+const FX_LABEL = { lobby: 'join countdown', charge: 'power-up', powered: 'full power', tug: 'tug of war', tugwin: 'tug of war result',
+  backend: 'backend view', text: 'join link', off: 'all off', quiz: 'quiz', color: 'colour', wave: 'wave', rainbow: 'rainbow', countdown: 'countdown' };
+function liveBroadcast(effect, at) {
+  if (!effect) return;
+  let label = FX_LABEL[effect.name] || effect.name;
+  if (effect.name === 'quiz') label = effect.phase === 'done' ? 'quiz scores' : `quiz · ${effect.phase || 'ask'} question ${(effect.q || 0) + 1}`;
+  if (effect.name === 'tugwin') return;   // sent by Lambda itself when the round ends
+  logLine(`pressed "${label}" → ${fmt(LIVE.phones)} phones, fire at ${stampOf(at).slice(3)}`);
+  LV.fireAt = at; LV.fireFx = effect;
+  if (step !== LIVE_STEP) return;
+  const leg = (a, b, k, next) => send(a, b, { dur: 0.16, arc: 0.5, mat: 'white', onArrive: () => { hit(k); if (k === 'lambda') lambdaHeat[0] = 1; next && next(); } });
+  leg(P.you, P.gw, 'gw', () => leg(P.gw, P.lambda, 'lambda', () => leg(P.lambda, P.db, 'db', () =>
+    leg(P.db, P.lambda, 'lambda', () => leg(P.lambda, P.gw, 'gw', () => {
+      const lit = Math.max(1, LV.lit);
+      for (let k = 0; k < lit; k++) send(P.gw, phonePt(PERM[k]), { dur: 0.3 + Math.random() * 0.25, arc: 1.1 });
+    })))));
+}
+function liveJoins(d) {
+  if (step !== LIVE_STEP) { LV.lit = Math.min(N, LIVE.phones); return; }
+  const target = Math.min(N, LIVE.phones), anim = Math.min(30, target - LV.lit);
+  LV.lit = Math.max(LV.lit, target - anim);      // the rest appear at once
+  for (let k = 0; k < anim; k++) {
+    const slot = PERM[Math.min(N - 1, LV.lit + k)];
+    const from = phonePt(slot);
+    send(from, GW_IN, { delay: k * 0.05, dur: 0.6, arc: 0.4, onArrive: () => { hit('gw');
+      send(P.gw, P.lambda, { dur: 0.35, arc: 0.5, onArrive: () => { hit('lambda'); lambdaHeat[0] = 1;
+        send(P.lambda, P.db, { dur: 0.35, arc: 0.6, onArrive: () => { hit('db'); LV.lit = Math.min(target, LV.lit + 1); } });
+      } });
+    } });
+  }
+}
+// no backend (e.g. the preview link): a gentle made-up feed so the step still shows something
+let simT = 0, simBT = 0, simPhones = 180, simCalls = 9000;
+function simTick() {
+  simT += dt; simBT += dt;
+  if (simT >= 1.5) {
+    simT = 0; simPhones = Math.min(300, simPhones + (Math.random() < 0.5 ? rnd(5) : 0)); simCalls += 20 + rnd(40);
+    liveStats({ phones: simPhones, calls: simCalls, rows: simPhones + 4, now: Date.now() });
+  }
+  if (simBT >= 9) { simBT = 0; liveBroadcast({ name: ['wave', 'tug', 'color'][rnd(3)] }, Date.now() + 1200); }
+}
+function nowOnPhones() {
+  const e = LIVE.effect, n = e && e.name;
+  if (!LIVE.on) return 'simulation (not connected)';
+  if (!n || n === 'off') return 'idle · waiting for my button';
+  if (n === 'charge') { const c = LIVE.charge; return c ? `power-up ${Math.floor(c.level * 100)}% · ${fmt(c.tappers)} tapping` : 'power-up'; }
+  if (n === 'tug') { const t = LIVE.tug; return t ? `tug of war · red ${fmt(t.a)} / blue ${fmt(t.b)}` : 'tug of war'; }
+  if (n === 'tugwin') return `tug of war over · ${e.winner === 'draw' ? 'draw' : (e.winner === 'A' ? 'red' : 'blue') + ' won'}`;
+  if (n === 'quiz') return `quiz · question ${(e.q || 0) + 1} · ${e.phase || 'ask'}`;
+  return FX_LABEL[n] || n;
+}
+function updateLive() {
+  if (!LIVE.on) simTick();
+  // real Lambda runs since the last stats poll, spread out as packets (capped so the screen stays readable)
+  const emit = Math.min(LV.runBudget, Math.max(1, LV.runBudget / 1.5) * dt, 45 * dt);
+  LV.runAcc = (LV.runAcc || 0) + emit; LV.runBudget -= emit;
+  while (LV.runAcc >= 1) {
+    LV.runAcc -= 1;
+    const slot = LV.lit ? PERM[rnd(LV.lit)] : rnd(N);
+    send(phonePt(slot), GW_IN, { dur: 0.55, arc: 0.35, onArrive: () => { hit('gw');
+      send(P.gw, P.lambda, { dur: 0.35, arc: 0.45, onArrive: () => { hit('lambda'); lambdaHeat[0] = 1;
+        if (Math.random() < 0.6) send(P.lambda, P.db, { dur: 0.35, arc: 0.55, onArrive: () => hit('db') });
+      } });
+    } });
+  }
+  LV.runsT += dt;
+  if (LV.runsT > 6 && LV.runsSince > 0) { logLine(`lambda ran ${fmt(LV.runsSince)} times in the last ${Math.round(LV.runsT)} s`); LV.runsSince = 0; LV.runsT = 0; }
+  // connected phones glow; at the exact AWS time of a broadcast they all fire, together with the real phones
+  for (let k = 0; k < N; k++) liveBase[PERM[k]] = k < LV.lit ? 0.2 : 0;
+  if (LV.fireAt && serverNow() >= LV.fireAt) {
+    const fx = LV.fireFx || {}; LV.fireAt = 0;
+    if (fx.name !== 'off') for (let k = 0; k < LV.lit; k++) {
+      const i = PERM[k]; phoneLevel[i] = 1;
+      phoneTint[i] = fx.name === 'tug' ? (k % 2 ? C.blue : C.red) : C.accent;
+    }
+    hit('gw');
+  }
+  // the panel: counters + the log
+  const pad = (a, w) => String(a).padStart(w);
+  const lines = [
+    `phones connected   ${pad(fmt(LIVE.phones), 9)}`,
+    `lambda runs        ${pad(fmt(LIVE.calls || 0), 9)}   ${pad('+' + (LIVE.rate || 0).toFixed(1), 6)}/s`,
+    `dynamodb rows      ${pad(fmt(LV.rows), 9)}`,
+    `on the phones      ${nowOnPhones()}`,
+    '',
+    ...LV.log.map((l) => `[${stampOf(l.t)}] ${l.txt}`),
+  ];
+  const txt = lines.join('\n');
+  if (hudBig.textContent !== txt) { hudBig.className = 'code live'; hudBig.textContent = txt; }
+}
+
 function liveTag() {
   const el = document.getElementById('live');
   if (el) el.innerHTML = LIVE.on ? `<b>&#9679;</b> live from aws · ${LIVE.region}` : 'simulation';
@@ -162,6 +284,8 @@ const PH_CENTER = new THREE.Vector3(-9.2, 0, 0.2);
 }
 scene.add(phones);
 const phoneLevel = new Float32Array(N);       // 0..1 brightness
+const liveBase = new Float32Array(N);         // resting glow of connected phones on the live step
+const PERM = (() => { const a = [...Array(N).keys()]; let x = 7; for (let i = N - 1; i > 0; i--) { x = (x * 9301 + 49297) % 233280; const j = Math.floor(x / 233280 * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
 const phoneTint = new Array(N).fill(C.accent); // colour when lit
 function paintPhones() {
   const base = new THREE.Color(C.phone), col = new THREE.Color();
@@ -288,7 +412,9 @@ function enterStep(i) {
   counts = { red: 0, blue: 0, rows: step >= 4 ? 300 : 0 };
   buildT = step === 8 ? 0 : -1;
   const S = STEPS[step];
-  ST.you.visible = [0, 5, 9].includes(step);
+  ST.you.visible = [0, 5, LIVE_STEP, STEPS.length - 1].includes(step);
+  document.body.classList.toggle('step-live', step === LIVE_STEP);
+  liveBase.fill(0); if (step === LIVE_STEP) { LV.lit = Math.min(N, LIVE.phones); LV.runBudget = 0; }
   document.getElementById('kicker').textContent = S.kicker;
   setHeadline(S.h, true); liveText();
   document.getElementById('qr').classList.toggle('on', step === STEPS.length - 1 && !!JOIN);
@@ -378,7 +504,10 @@ function updateStep() {
     }
     case 8: // stations drop in one by one, built from the template
       break;
-    case 9: // wide shot, everything quietly alive
+    case LIVE_STEP:
+      updateLive();
+      break;
+    case 10: // wide shot, everything quietly alive
       every('blink', 0.05, () => { phoneLevel[rnd(N)] = 1; });
       every('msg', 0.3, () => { const i = rnd(N); send(phonePt(i), GW_IN, { dur: 0.8, arc: 0.4, onArrive: () => { hit('gw'); send(P.gw, P.lambda, { dur: 0.5, onArrive: () => { hit('lambda'); lambdaHeat[0] = 1; } }); } }); });
       break;
@@ -459,7 +588,8 @@ function frame() {
     const s = b.scale.x + (b.userData.target - b.scale.x) * Math.min(1, dt * 6);
     b.scale.setScalar(Math.max(0.001, s)); b.visible = s > 0.01;
   });
-  if (step !== 6 && step !== 5) for (let i = 0; i < N; i++) phoneLevel[i] = Math.max(step === 7 ? phoneLevel[i] : 0, phoneLevel[i] - dt * 0.6);
+  if (step !== 6 && step !== 5) for (let i = 0; i < N; i++) phoneLevel[i] = Math.max(step === 7 ? phoneLevel[i] : liveBase[i], phoneLevel[i] - dt * (step === LIVE_STEP ? 0.9 : 0.6));
+  if (step !== LIVE_STEP && step !== 7) for (let i = 0; i < N; i++) if (phoneTint[i] !== C.accent && phoneLevel[i] < 0.01) phoneTint[i] = C.accent;
   paintPhones();
   updateCamera(); updateLabels();
   renderer.render(scene, camera);
@@ -472,6 +602,8 @@ window.addEventListener('keydown', (e) => {
   if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); enterStep(step + 1); }
   else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); enterStep(step - 1); }
   else if (e.key === 'Home') enterStep(0);
+  else if (e.key === 'End') enterStep(STEPS.length - 1);
+  else if (e.key === 'l' || e.key === 'L') enterStep(LIVE_STEP);
   else if (e.key === 'f') document.documentElement.requestFullscreen?.();
   else if (/^[0-9]$/.test(e.key)) enterStep(Number(e.key));
 });
