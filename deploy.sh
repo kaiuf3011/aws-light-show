@@ -57,7 +57,7 @@ echo
 bold "✅ DONE! Save these links:"
 echo "   📱 Phones (QR code points here):  $SITE_URL/"
 echo "   🖥️  Big screen (TV / projector):    $SITE_URL/screen.html"
-echo "   🧊 3D "how it works" + quiz (TV):   $SITE_URL/explain.html"
+echo "   🧊 How it works, 3D + quiz (TV):    $SITE_URL/explain.html"
 echo "   🖨️  Printable QR poster:            $SITE_URL/qr.html"
 echo "   🎛️  Your control panel:             $SITE_URL/control.html?key=$KEY"
 echo "   🔑 Admin key:                      $KEY"
