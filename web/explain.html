@@ -34,17 +34,33 @@
   #big.small { color: var(--muted); }
   #big.code { text-align: left; color: var(--text-2); background: rgba(15,15,16,.85); border: 1px solid #2a2a2e; padding: 14px 18px; line-height: 1.55; }
 
+  #live { margin-right: 2.2em; color: #55555b; }
+  body.is-live #live { color: var(--text-2); }
+  body.is-live #live b { color: var(--good, #3dd68c); font-weight: 400; }
+  #h .cur { color: var(--accent); }
+  #qr { position: fixed; right: 5vw; bottom: 8vh; width: clamp(160px, 16vw, 280px); opacity: 0; transform: translateY(12px);
+        transition: opacity .6s var(--ease), transform .6s var(--ease); pointer-events: none; text-align: left; }
+  #qr.on { opacity: 1; transform: none; }
+  #qrimg { background: #ededed; padding: 14px; line-height: 0; }
+  #qrimg svg { width: 100%; height: auto; display: block; }
+  #qrcap { margin-top: 12px; color: var(--accent); font-size: clamp(13px, 1.1vw, 19px); }
+  #qrurl { color: var(--muted); font-size: clamp(11px, .85vw, 15px); word-break: break-all; }
   #hint { position: fixed; right: 5vw; top: calc(5vh + 28px); color: #55555b; font-size: 12px; pointer-events: none; transition: opacity 1s; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <div id="labels"></div>
-<div id="top"><span>light-show · how it works</span><span id="count">00 / 09</span></div>
+<div id="top"><span>light-show · how it works</span><span><span id="live">simulation</span><span id="count">00 / 09</span></span></div>
 <div id="hint">→ next · ← back · f fullscreen</div>
 <div id="text"><div id="kicker"></div><h1 id="h"></h1><p id="p"></p></div>
 <div id="big"></div>
+<div id="qr"><div id="qrimg"></div><div id="qrcap">scan to join the club</div><div id="qrurl"></div></div>
 <div style="position:fixed;left:5vw;top:calc(5vh + 26px)" id="ticks"></div>
+<script src="config.js"></script>
+<script src="show-config.js"></script>
+<script src="client.js"></script>
+<script src="vendor/qrcode.js"></script>
 <script type="module" src="explain.js"></script>
 <script>setTimeout(() => { const h = document.getElementById('hint'); if (h) h.style.opacity = 0; }, 9000);</script>
 </body>

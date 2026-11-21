@@ -7,6 +7,7 @@ const C = {
   bg: 0x0f0f10, ground: 0x1d1d20, body: 0x1f1f22, edge: 0x6e6e74, edgeDim: 0x3a3a3f,
   accent: 0xff9900, red: 0xe5484d, blue: 0x3e8bff, phone: 0x2c2c31, white: 0xededed,
 };
+const TEMPLATE_LINES = typeof __TEMPLATE_LINES__ !== 'undefined' ? __TEMPLATE_LINES__ : 200;
 const STEPS = [
   { kicker: 'aws cloud club · rgu', h: '300 phones, one button', p: 'What actually happened when you tapped. Five pieces, zero servers to manage.', cam: [-2, 11.5, 20], at: [-2, 0.4, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
   { kicker: '01 · the menu', h: 'Your phone opened a page from S3', p: 'Amazon S3 stores the website as plain files. Scanning the QR code just downloads them, nothing is running.', cam: [-15.5, 7.5, 9.5], at: [-11.2, 0.6, 0.6], labels: ['phones', 's3'] },
@@ -16,20 +17,54 @@ const STEPS = [
   { kicker: '05 · one button', h: 'One press reaches every phone', p: 'My button goes to Lambda. Lambda reads every row and sends one message per phone, all in under a second.', cam: [-1, 11, 15], at: [-1, 0.2, 0.5], labels: ['you', 'phones', 'gw', 'lambda', 'db'] },
   { kicker: '06 · the same moment', h: 'Fire at the same instant, not on arrival', p: 'Messages land at slightly different times. Every phone synced its clock with AWS, so they all wait and fire together.', cam: [-10, 9.5, 11], at: [-10.4, 0, 1.4], labels: [] },
   { kicker: '07 · scaling', h: '300 people tapping at once', p: 'AWS starts more copies of the chef by itself. The database adds every pull in one unbreakable step, so none are lost.', cam: [-0.5, 9, 14], at: [0, 0.6, 0], labels: ['phones', 'gw', 'lambda', 'db'] },
-  { kicker: '08 · infrastructure as code', h: 'All of this is one text file', p: 'I described the five pieces in a template. AWS built them in about three minutes, and one command deletes them.', cam: [-2.5, 12, 19], at: [-2.5, 0.6, 0], labels: ['s3', 'gw', 'lambda', 'db'] },
+  { kicker: '08 · infrastructure as code', h: `All of this is one ${TEMPLATE_LINES}-line file`, p: 'I described the five pieces in a template. AWS built them in about three minutes, and one command deletes them.', cam: [-2.5, 12, 19], at: [-2.5, 0.6, 0], labels: ['s3', 'gw', 'lambda', 'db'] },
   { kicker: '09 · the bill', h: 'Servers I manage: 0', p: 'All of tonight cost less than a cup of chai. Want to build this yourself? That is what the AWS Cloud Club is for.', cam: [-2.5, 15, 25], at: [-2.5, 0, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
 ];
+
+// ---------- live data from the real backend (falls back to a simulation) ----------
+const LIVE = { on: false, phones: 0, calls: null, rate: 0, rtt: null, offset: 0, region: 'local' };
+(function connectLive() {
+  if (typeof window.ShowClient !== 'function' || !window.WS_URL) return;
+  const m = String(window.WS_URL).match(/execute-api\.([a-z0-9-]+)\./); LIVE.region = m ? m[1] : 'local';
+  let prev = null;
+  const client = window.ShowClient({
+    role: 'screen',
+    onStatus: (st) => { LIVE.on = st === 'open'; liveTag(); },
+    onMessage: (msg) => {
+      if (msg.type !== 'stats') return;
+      LIVE.phones = msg.phones || 0;
+      if (msg.calls != null) {
+        if (prev && msg.now > prev.now && msg.calls >= prev.calls) LIVE.rate = (msg.calls - prev.calls) / ((msg.now - prev.now) / 1000);
+        prev = { calls: msg.calls, now: msg.now }; LIVE.calls = msg.calls;
+      }
+      LIVE.rtt = client.bestRtt(); LIVE.offset = client.offset();
+      liveTag(); liveText();
+    },
+  });
+  setInterval(() => client.send({ action: 'stats' }), 1500);
+})();
+function liveTag() {
+  const el = document.getElementById('live');
+  if (el) el.innerHTML = LIVE.on ? `<b>&#9679;</b> live from aws · ${LIVE.region}` : 'simulation';
+  document.body.classList.toggle('is-live', LIVE.on);
+}
+const fmt = (n) => Math.round(n || 0).toLocaleString('en-IN');
 
 // ---------- renderer, camera, scene ----------
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(C.bg);
 scene.fog = new THREE.Fog(C.bg, 24, 46);
 const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
 scene.add(new THREE.HemisphereLight(0xffffff, 0x202024, 1.6));
-const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(6, 12, 8); scene.add(sun);
+const sun = new THREE.DirectionalLight(0xffffff, 1.4); sun.position.set(5, 14, 9); scene.add(sun);
+sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.radius = 4; sun.shadow.bias = -0.0008;
+Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 14, bottom: -14, near: 1, far: 40 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.ShadowMaterial({ opacity: 0.42 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
 const grid = new THREE.GridHelper(60, 60, C.ground, C.ground);
 grid.position.y = -0.01; scene.add(grid);
@@ -39,28 +74,50 @@ function solid(geo, y = 0) {
   const mat = new THREE.MeshStandardMaterial({ color: C.body, roughness: 0.9, metalness: 0.05, emissive: C.accent, emissiveIntensity: 0 });
   const mesh = new THREE.Mesh(geo, mat);
   const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 25), new THREE.LineBasicMaterial({ color: C.edge }));
-  mesh.position.y = y; edges.position.y = y;
+  mesh.position.y = y; edges.position.y = y; mesh.castShadow = true;
   g.add(mesh, edges);
-  g.userData = { mat, edgeMat: edges.material, heat: 0 };
+  g.userData = { mat, edgeMat: edges.material, heat: 0, faces: [] };
   return g;
 }
-const tmpC = new THREE.Color();
+const tmpC = new THREE.Color(), ACCENT = new THREE.Color(C.accent), WHITE = new THREE.Color(0xffffff);
 function warm(st, k) {   // k = 0..1 how "active" a station looks
   st.userData.mat.emissiveIntensity = 0.35 * k;
-  st.userData.edgeMat.color.copy(tmpC.set(C.edge).lerp(new THREE.Color(C.accent), k));
+  st.userData.edgeMat.color.copy(tmpC.set(C.edge).lerp(ACCENT, k));
+  for (const f of st.userData.faces) f.color.copy(tmpC.set(0x9a9aa0).lerp(WHITE, k));
 }
+
+// names printed on the blocks (canvas textures, redrawn once the font has loaded)
+const faceJobs = [];
+function face(part, text, w, h, { px = 120, weight = 500 } = {}) {
+  const cv = document.createElement('canvas'); cv.width = Math.round(256 * w / h) * 2; cv.height = 512;
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const draw = () => {
+    const g = cv.getContext('2d'); g.clearRect(0, 0, cv.width, cv.height);
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `${weight} ${px * 2}px "JetBrains Mono", ui-monospace, monospace`;
+    g.fillText(text, cv.width / 2, cv.height / 2 + px * 0.08); tex.needsUpdate = true;
+  };
+  draw(); faceJobs.push(draw);
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, color: 0x9a9aa0 });
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+  part.add(m); part.userData.faces.push(mat);
+  return m;
+}
+document.fonts && document.fonts.load('500 40px "JetBrains Mono"').then(() => faceJobs.forEach((f) => f()));
 
 // stations
 const ST = {};
 // S3: a bucket
 ST.s3 = new THREE.Group(); ST.s3.add(solid(new THREE.CylinderGeometry(1.05, 0.75, 1.5, 28, 1, true), 0.75), solid(new THREE.CylinderGeometry(0.75, 0.75, 0.02, 28), 0.01));
-ST.s3.position.set(-14.2, 0, -2.6); ST.s3.userData.parts = ST.s3.children; scene.add(ST.s3);
+ST.s3.position.set(-14.2, 0, -2.6);
+{ const f = face(ST.s3.children[0], 'S3', 1.1, 0.6, { px: 170 }); f.position.set(0, 0.82, 0.95); f.rotation.x = -0.17; } ST.s3.userData.parts = ST.s3.children; scene.add(ST.s3);
 // API Gateway: an arch the traffic passes through
 ST.gw = new THREE.Group();
 ST.gw.add(solid(new THREE.BoxGeometry(0.5, 2.6, 0.5), 1.3)); ST.gw.children[0].position.z = -1.35;
 ST.gw.add(solid(new THREE.BoxGeometry(0.5, 2.6, 0.5), 1.3)); ST.gw.children[1].position.z = 1.35;
 ST.gw.add(solid(new THREE.BoxGeometry(0.7, 0.45, 3.3), 2.8));
-ST.gw.position.set(-3, 0, 0); ST.gw.userData.parts = ST.gw.children; scene.add(ST.gw);
+ST.gw.position.set(-3, 0, 0);
+{ const f = face(ST.gw.children[2], 'API GATEWAY', 3.0, 0.36, { px: 110 }); f.position.set(-0.36, 2.8, 0); f.rotation.y = -Math.PI / 2; } ST.gw.userData.parts = ST.gw.children; scene.add(ST.gw);
 // Lambda: a block (copies appear when scaling)
 const lambdaGeo = new THREE.BoxGeometry(1.5, 1.9, 1.5);
 ST.lambda = new THREE.Group();
@@ -70,12 +127,14 @@ for (let i = 0; i < 8; i++) {
   const ang = (i - 1) / 7 * Math.PI * 2;
   b.position.set(i === 0 ? 0 : Math.cos(ang) * 2.4, 0, i === 0 ? 0 : Math.sin(ang) * 2.4);
   b.visible = i === 0; b.userData.target = i === 0 ? 1 : 0; b.scale.setScalar(i === 0 ? 1 : 0.001);
+  { const f = face(b, '\u03bb', 1.1, 1.1, { px: 190 }); f.position.set(0, 0.95, 0.76); }
   ST.lambda.add(b); lambdas.push(b);
 }
 ST.lambda.position.set(2.6, 0, 0); ST.lambda.userData.parts = [lambdas[0]]; scene.add(ST.lambda);
 // DynamoDB: the classic stack of disks
 ST.db = new THREE.Group();
 for (let i = 0; i < 4; i++) ST.db.add(solid(new THREE.CylinderGeometry(1.1, 1.1, 0.42, 36), 0.25 + i * 0.55));
+{ const f = face(ST.db.children[3], 'DynamoDB', 1.6, 0.4, { px: 120 }); f.position.set(0, 1.92, 0); f.rotation.x = -Math.PI / 2; }
 ST.db.position.set(8.2, 0, 0); ST.db.userData.parts = ST.db.children; scene.add(ST.db);
 // you: the control phone
 ST.you = solid(new THREE.BoxGeometry(0.55, 0.08, 0.95), 0.05);
@@ -125,18 +184,23 @@ for (let i = 0; i < 700; i++) { const m = new THREE.Mesh(pktGeo, PKT_MAT.accent)
 function send(from, to, { dur = 0.9, arc = 1.0, mat = 'accent', delay = 0, onArrive = null } = {}) {
   const mesh = pool.pop(); if (!mesh) return;
   mesh.material = PKT_MAT[mat];
-  live.push({ mesh, a: from.clone(), b: to.clone(), t: -delay, dur, arc, onArrive });
+  mesh.scale.set(1, 1, 1);
+  live.push({ seen: false, mesh, a: from.clone(), b: to.clone(), t: -delay, dur, arc, onArrive });
 }
 const v1 = new THREE.Vector3(), v2 = new THREE.Vector3();
-function stepPackets(dt) {
+function stepPackets(dtp) {
   for (let i = live.length - 1; i >= 0; i--) {
-    const p = live[i]; p.t += dt;
+    const p = live[i]; p.t += dtp;
     if (p.t < 0) { p.mesh.visible = false; continue; }
     const u = Math.min(1, p.t / p.dur);
     v1.lerpVectors(p.a, p.b, 0.5); v1.y += p.arc;          // control point
     const a = 1 - u;
+    v2.copy(p.mesh.position);
     p.mesh.position.set(a * a * p.a.x + 2 * a * u * v1.x + u * u * p.b.x, a * a * p.a.y + 2 * a * u * v1.y + u * u * p.b.y, a * a * p.a.z + 2 * a * u * v1.z + u * u * p.b.z);
     p.mesh.visible = true;
+    const sp = v2.distanceTo(p.mesh.position) / Math.max(dt, 1e-4);
+    if (sp > 0.01 && p.seen) { v2.sub(p.mesh.position).negate().add(p.mesh.position); p.mesh.lookAt(v2); p.mesh.scale.set(0.85, 0.85, 1 + Math.min(1.6, sp * 0.07)); }
+    p.seen = true;
     if (u >= 1) { p.mesh.visible = false; pool.push(p.mesh); live.splice(i, 1); p.onArrive && p.onArrive(); }
   }
 }
@@ -157,7 +221,7 @@ const LABELS = {
   s3: { at: new THREE.Vector3(-14.2, 2.3, -2.6), html: '<b>Amazon S3</b><span>the menu · stores the page</span>' },
   gw: { at: new THREE.Vector3(-3, 3.5, 0), html: '<b>API Gateway</b><span>the waiter · open lines</span>' },
   lambda: { at: new THREE.Vector3(2.6, 2.5, 0), html: '<b>AWS Lambda</b><span>the chef · my code</span>' },
-  db: { at: new THREE.Vector3(8.2, 2.7, 0), html: '<b>DynamoDB</b><span id="dbsub">the fridge · remembers</span>' },
+  db: { at: new THREE.Vector3(8.2, 2.7, 0), html: '<b>DynamoDB</b><span>the fridge · remembers</span>' },
   you: { at: new THREE.Vector3(-5.4, 0.6, 4.4), html: '<b>my button</b><span>control panel</span>' },
 };
 const labelLayer = document.getElementById('labels');
@@ -165,6 +229,42 @@ for (const [k, L] of Object.entries(LABELS)) {
   const d = document.createElement('div'); d.className = 'lbl'; d.innerHTML = L.html; labelLayer.appendChild(d); L.el = d;
 }
 const hudBig = document.getElementById('big');
+const setSub = (k, txt) => { const sp = LABELS[k].el.querySelector('span'); if (sp && sp.textContent !== txt) sp.textContent = txt; };
+const BASE_SUB = { phones: 'the browser', s3: 'the menu · stores the page', gw: 'the waiter · open lines', lambda: 'the chef · my code', db: 'the fridge · remembers', you: 'control panel' };
+function liveText() {   // labels carry real numbers whenever the backend is connected
+  if (!LIVE.on) return;
+  setSub('phones', `${fmt(LIVE.phones)} connected right now`);
+  if (LIVE.calls != null) setSub('lambda', `${fmt(LIVE.calls)} runs · ${LIVE.rate.toFixed(1)}/s`);
+  if (step !== 4 && step !== 7) setSub('db', `the fridge · ${fmt(LIVE.phones)} phone rows`);
+  if (step === 0 && LIVE.phones >= 10) setHeadline(`${fmt(LIVE.phones)} phones, one button`);
+}
+
+// headline types itself in, like a terminal
+let typed = { full: '', n: 0, t: 0 };
+function setHeadline(text, retype = false) {
+  if (!retype && text === typed.full) return;
+  if (!retype && typed.n >= typed.full.length) { typed = { full: text, n: text.length, t: 0 }; drawHeadline(); return; }
+  const n = retype ? 0 : Math.min(typed.n, text.length);
+  typed = { full: text, n, t: n * 0.028 };
+}
+function drawHeadline() {
+  const h = document.getElementById('h');
+  const done = typed.n >= typed.full.length;
+  h.innerHTML = typed.full.slice(0, typed.n).replace(/&/g, '&amp;').replace(/</g, '&lt;') + (done ? '' : '<span class="cur">_</span>');
+}
+function updateTyping() {
+  if (typed.n >= typed.full.length) return;
+  typed.t += dt; const k = Math.floor(typed.t / 0.028);
+  if (k > typed.n) { typed.n = Math.min(typed.full.length, k); drawHeadline(); }
+}
+
+// join QR on the last step (from show-config.js; hidden while the link is still a placeholder)
+const JOIN = (window.SHOW && window.SHOW.joinUrl && !/REPLACE-ME/.test(window.SHOW.joinUrl)) ? window.SHOW.joinUrl : '';
+if (JOIN && typeof window.qrcode === 'function') {
+  try { const q = window.qrcode(0, 'M'); q.addData(JOIN); q.make();
+    document.getElementById('qrimg').innerHTML = q.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+    document.getElementById('qrurl').textContent = JOIN.replace(/^https?:\/\//, ''); } catch (e) { /* no QR */ }
+}
 
 // ---------- steps: what plays while each one is on screen ----------
 let step = 0, stepT = 0, timers = {};
@@ -184,7 +284,10 @@ function enterStep(i) {
   const S = STEPS[step];
   ST.you.visible = [0, 5, 9].includes(step);
   document.getElementById('kicker').textContent = S.kicker;
-  document.getElementById('h').textContent = S.h;
+  setHeadline(S.h, true); liveText();
+  document.getElementById('qr').classList.toggle('on', step === STEPS.length - 1 && !!JOIN);
+  for (const k of Object.keys(BASE_SUB)) if (!LIVE.on || k === 's3' || k === 'gw' || k === 'you') setSub(k, BASE_SUB[k]);
+  liveText();
   document.getElementById('p').textContent = S.p;
   document.getElementById('count').textContent = `${String(step).padStart(2, '0')} / ${String(STEPS.length - 1).padStart(2, '0')}`;
   document.querySelectorAll('#ticks i').forEach((t, k) => t.classList.toggle('on', k <= step));
@@ -213,7 +316,7 @@ function updateStep() {
     case 4: // lambda writes rows into dynamodb
       every('row', 0.35, () => { hit('lambda'); lambdaHeat[0] = 1; send(P.lambda, P.db, { dur: 0.7, arc: 0.7, onArrive: () => { hit('db'); counts.rows = Math.min(300, counts.rows + 1); } }); });
       if (t < 0.05) counts.rows = 287;
-      document.getElementById('dbsub').textContent = `the fridge · ${counts.rows} rows`;
+      setSub('db', `the fridge · ${LIVE.on ? fmt(LIVE.phones) : counts.rows} rows`);
       break;
     case 5: { // the button: you -> gw -> lambda -> db (read) -> lambda -> gw -> every phone
       const loop = 7, lt = t % loop;
@@ -245,7 +348,8 @@ function updateStep() {
       if (!fired && t >= fireAt) { fired = true; phoneLevel.fill(1); }
       if (fired && t > fireAt + 1.5) for (let i = 0; i < N; i++) phoneLevel[i] *= 0.96;
       hudBig.className = fired ? 'fired' : '';
-      hudBig.textContent = fired ? 'fired together' : `waiting · fire at ${stamp}`;
+      const clk = LIVE.on && LIVE.rtt != null ? `\nthis laptop is ${Math.abs(Math.round(LIVE.offset))} ms ${LIVE.offset >= 0 ? 'behind' : 'ahead of'} AWS · corrected` : '';
+      hudBig.textContent = fired ? 'fired together' : `waiting · fire at ${stamp}${clk}`;
       break;
     }
     case 7: { // tug of war: half red half blue, lambda copies multiply
@@ -261,7 +365,7 @@ function updateStep() {
           } });
         } });
       });
-      document.getElementById('dbsub').textContent = `red ${counts.red.toLocaleString('en-IN')} · blue ${counts.blue.toLocaleString('en-IN')}`;
+      setSub('db', `red ${fmt(counts.red)} · blue ${fmt(counts.blue)}`);
       hudBig.className = 'small';
       hudBig.textContent = `lambda copies running: ${copies}`;
       break;
@@ -274,7 +378,7 @@ function updateStep() {
       break;
   }
   if (step !== 2) lineMat.opacity = Math.max(0, lineMat.opacity - dt * 0.8);
-  if (step !== 4 && step !== 7) document.getElementById('dbsub').textContent = 'the fridge · remembers';
+
 }
 
 // infrastructure-as-code build-up (step 8)
@@ -290,8 +394,8 @@ function updateBuild() {
   });
   if (buildT >= 0) {
     buildT += dt;
-    const lines = ['Resources:', '  SiteBucket:      AWS::S3::Bucket', '  ShowApi:         AWS::ApiGatewayV2::Api', '  ShowFunction:    AWS::Serverless::Function', '  ConnectionsTable: AWS::DynamoDB::Table'];
-    const shown = Math.min(lines.length, 1 + Math.floor((buildT - 0.1) / 0.55));
+    const lines = [`# template.yaml · ${TEMPLATE_LINES} lines`, 'Resources:', '  SiteBucket:      AWS::S3::Bucket', '  ShowApi:         AWS::ApiGatewayV2::Api', '  ShowFunction:    AWS::Serverless::Function', '  ConnectionsTable: AWS::DynamoDB::Table'];
+    const shown = Math.min(lines.length, 2 + Math.floor((buildT - 0.1) / 0.55));
     hudBig.className = 'code';
     hudBig.textContent = lines.slice(0, Math.max(1, shown)).join('\n');
     if (buildT > 6) buildT = 0;   // replay while you talk
@@ -307,6 +411,7 @@ function updateCamera() {
   camT = Math.min(1, camT + dt / 1.7);
   const e = ease(camT);
   camera.position.lerpVectors(camFrom, camTo, e);
+  camera.position.x += Math.sin(stepT * 0.23) * 0.35 * e; camera.position.y += Math.sin(stepT * 0.17) * 0.18 * e;
   curAt.lerpVectors(atFrom, atTo, e);
   if (step === 0 && camT >= 1) {             // slow orbit on the title
     const a = stepT * 0.06;
@@ -340,7 +445,7 @@ function resize() {
 window.addEventListener('resize', resize); resize();
 function frame() {
   dt = Math.min(0.05, clock.getDelta()); stepT += dt;
-  updateStep(); updateBuild(); stepPackets(dt);
+  updateStep(); updateBuild(); stepPackets(dt); updateTyping();
   for (const k of Object.keys(heat)) { heat[k] = Math.max(0, heat[k] - dt * 2.2); ST[k].userData.parts.forEach((p) => p.userData.mat && warm(p, heat[k])); }
   lambdas.forEach((b, k) => {
     lambdaHeat[k] = Math.max(0, lambdaHeat[k] - dt * 2.2); warm(b, Math.max(lambdaHeat[k], k === 0 ? heat.lambda : 0));
