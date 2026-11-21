@@ -26,11 +26,13 @@ const LIVE = { on: false, phones: 0, calls: null, rate: 0, rtt: null, offset: 0,
 (function connectLive() {
   if (typeof window.ShowClient !== 'function' || !window.WS_URL) return;
   const m = String(window.WS_URL).match(/execute-api\.([a-z0-9-]+)\./); LIVE.region = m ? m[1] : 'local';
-  let prev = null;
+  let prev = null, player = null, quiz = null;
   const client = window.ShowClient({
     role: 'screen',
     onStatus: (st) => { LIVE.on = st === 'open'; liveTag(); },
     onMessage: (msg) => {
+      if (quiz) quiz.onMessage(msg);
+      if (msg.type === 'effect' && player) player.push(msg);
       if (msg.type !== 'stats') return;
       LIVE.phones = msg.phones || 0;
       if (msg.calls != null) {
@@ -42,6 +44,10 @@ const LIVE = { on: false, phones: 0, calls: null, rate: 0, rtt: null, offset: 0,
     },
   });
   setInterval(() => client.send({ action: 'stats' }), 1500);
+  if (typeof window.EffectPlayer === 'function' && typeof window.QuizTV === 'function') {
+    player = window.EffectPlayer(client); quiz = window.QuizTV(client);
+    LIVE.quizFrame = () => quiz.frame(player.frame().effect);
+  }
 })();
 function liveTag() {
   const el = document.getElementById('live');
@@ -445,6 +451,7 @@ function resize() {
 window.addEventListener('resize', resize); resize();
 function frame() {
   dt = Math.min(0.05, clock.getDelta()); stepT += dt;
+  if (LIVE.quizFrame) LIVE.quizFrame();
   updateStep(); updateBuild(); stepPackets(dt); updateTyping();
   for (const k of Object.keys(heat)) { heat[k] = Math.max(0, heat[k] - dt * 2.2); ST[k].userData.parts.forEach((p) => p.userData.mat && warm(p, heat[k])); }
   lambdas.forEach((b, k) => {

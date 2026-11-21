@@ -134,6 +134,7 @@
         break;
       }
 
+      case 'quiz':      // phones and screens draw the quiz in their own overlay
       case 'backend':
         // the big screen shows the backend view; phones just wait
         out.idle = true;

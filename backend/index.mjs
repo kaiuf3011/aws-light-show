@@ -1,6 +1,6 @@
 // 300 Phones, One Button — the Lambda "chef".
 // One function handles every WebSocket route: $connect, $disconnect and $default.
-// Messages from browsers look like { action: "join" | "sync" | "stats" | "cmd" | "tap" | "charge" | "tug" | "tugstate", ... }.
+// Messages from browsers look like { action: "join" | "sync" | "stats" | "cmd" | "tap" | "charge" | "tug" | "tugstate" | "answer" | "quizstate", ... }.
 
 import { DynamoDBClient, PutItemCommand, DeleteItemCommand, ScanCommand, UpdateItemCommand, GetItemCommand } from '@aws-sdk/client-dynamodb';
 import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk/client-apigatewaymanagementapi';
@@ -15,7 +15,8 @@ const LEAD_MS = 1200;
 const BATCH = 200;
 const META = '#charge'; // the power-up meter lives in the same table under this key
 const TUG = '#tug';      // the tug-of-war score lives here
-const METRICS = '#metrics'; // how many times this Lambda has run (shown on the backend view)
+const METRICS = '#metrics';
+const QUIZ = '#quiz';      // the live quiz: current question, answer window and the four tallies // how many times this Lambda has run (shown on the backend view)
 
 // One readable line per action. Open CloudWatch > Live Tail on this function's log group to watch them stream.
 const log = (...parts) => console.log(parts.join(' '));
@@ -37,7 +38,7 @@ const TUG_COUNTDOWN_MS = 3000; // 3-2-1 on every phone before pulling starts
 
 const EFFECTS = new Set([
   'off', 'color', 'rainbow', 'strobe', 'wave', 'pulse',
-  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin', 'lobby', 'backend',
+  'sparkle', 'team', 'spotlight', 'countdown', 'text', 'charge', 'powered', 'tug', 'tugwin', 'lobby', 'backend', 'quiz',
 ]);
 const ZONES = new Set(['left', 'center', 'right', 'remote']);
 
@@ -128,6 +129,8 @@ function sanitizeEffect(e = {}) {
   if (e.b) out.b = clean(e.b);
   if (e.seconds != null) out.seconds = Math.floor(clamp(e.seconds, 10, 120, 45));
   if (e.from != null) out.from = Math.floor(clamp(e.from, 1, 10, 5));
+  if (e.q != null) out.q = Math.floor(clamp(e.q, 0, 9, 0));
+  if (['ask', 'reveal', 'done'].includes(e.phase)) out.phase = e.phase;
   if (e.dept) out.dept = clean(e.dept);
   if (e.text) out.text = clean(e.text, 60);
   if (e.sub) out.sub = clean(e.sub, 80);
@@ -164,6 +167,15 @@ function chargeView(item) {
     level: Math.min(1, n('taps') / goal),
     active: !!item?.active?.BOOL,
     done: !!item?.done?.BOOL,
+  };
+}
+
+function quizView(item) {
+  const n = (k) => Number(item?.[k]?.N || 0);
+  return {
+    type: 'quiz', round: n('round'), q: n('q'), phase: item?.phase?.S || 'none',
+    counts: [n('c0'), n('c1'), n('c2'), n('c3')], total: n('total'), phones: n('phones'),
+    endsAt: n('endsAt'), now: Date.now(),
   };
 }
 
@@ -300,6 +312,51 @@ async function handleMessage(ctx, id, msg) {
       return;
     }
 
+    case 'answer': {
+      // One vote per phone per question. Step 1 marks this phone's row (fails if it already voted
+      // in this round), step 2 adds the vote to the tally, but only while the answer window is open.
+      const choice = Math.floor(clamp(msg.choice, 0, 3, -1));
+      const round = Math.floor(Number(msg.round) || 0);
+      if (choice < 0 || !round) return;
+      try {
+        await db.send(new UpdateItemCommand({
+          TableName: TABLE, Key: { connectionId: { S: id } },
+          UpdateExpression: 'SET #qr = :r, #qc = :c',
+          ConditionExpression: 'attribute_exists(connectionId) AND (attribute_not_exists(#qr) OR #qr <> :r)',
+          ExpressionAttributeNames: { '#qr': 'quizRound', '#qc': 'quizChoice' },
+          ExpressionAttributeValues: { ':r': { N: String(round) }, ':c': { N: String(choice) } },
+        }));
+      } catch (e) {
+        if (e.name === 'ConditionalCheckFailedException') return; // already answered
+        throw e;
+      }
+      let item;
+      try {
+        const r = await db.send(new UpdateItemCommand({
+          TableName: TABLE, Key: { connectionId: { S: QUIZ } },
+          UpdateExpression: 'ADD #c :one, #total :one',
+          ConditionExpression: '#round = :r AND #phase = :ask AND #endsAt > :now',
+          ExpressionAttributeNames: { '#c': `c${choice}`, '#total': 'total', '#round': 'round', '#phase': 'phase', '#endsAt': 'endsAt' },
+          ExpressionAttributeValues: { ':one': { N: '1' }, ':r': { N: String(round) }, ':ask': { S: 'ask' }, ':now': { N: String(Date.now() - 1500) } },
+          ReturnValues: 'ALL_NEW',
+        }));
+        item = r.Attributes;
+      } catch (e) {
+        if (e.name === 'ConditionalCheckFailedException') { await post(ctx, id, { type: 'answered', ok: false }); return; }
+        throw e;
+      }
+      const view = quizView(item);
+      log(`answer Q${view.q + 1} → ${'ABCD'[choice]} (${view.total} answered)`);
+      await post(ctx, id, { type: 'answered', ok: true, round, choice });
+      return;
+    }
+
+    case 'quizstate': {
+      const r = await db.send(new GetItemCommand({ TableName: TABLE, Key: { connectionId: { S: QUIZ } } }));
+      await post(ctx, id, quizView(r.Item));
+      return;
+    }
+
     case 'tugstate': {
       const r = await db.send(new GetItemCommand({ TableName: TABLE, Key: { connectionId: { S: TUG } } }));
       const view = tugView(r.Item);
@@ -376,6 +433,35 @@ async function handleMessage(ctx, id, msg) {
             active: { BOOL: true }, done: { BOOL: false }, winner: { S: '' },
           },
         }));
+      }
+      if (effect.name === 'quiz') {
+        effect.phase = effect.phase || 'ask';
+        if (effect.phase === 'ask') {
+          // New question: fresh tallies, and an answer window that closes on its own.
+          const phones = (await scanAll()).filter((i) => i.role === 'phone').length;
+          effect.seconds = effect.seconds || 20;
+          effect.round = at;
+          effect.endsAt = at + effect.seconds * 1000;
+          effect.phones = phones;
+          await db.send(new PutItemCommand({
+            TableName: TABLE,
+            Item: {
+              connectionId: { S: QUIZ }, role: { S: 'meta' }, ttl: { N: ttl() },
+              round: { N: String(at) }, q: { N: String(effect.q || 0) }, phase: { S: 'ask' },
+              endsAt: { N: String(effect.endsAt) }, phones: { N: String(phones) },
+              c0: { N: '0' }, c1: { N: '0' }, c2: { N: '0' }, c3: { N: '0' }, total: { N: '0' },
+            },
+          }));
+        } else if (effect.phase === 'reveal') {
+          // Close the window and send the final tallies along with the reveal.
+          const r = await db.send(new UpdateItemCommand({
+            TableName: TABLE, Key: { connectionId: { S: QUIZ } },
+            UpdateExpression: 'SET #phase = :p', ExpressionAttributeNames: { '#phase': 'phase' },
+            ExpressionAttributeValues: { ':p': { S: 'reveal' } }, ReturnValues: 'ALL_NEW',
+          }));
+          const v = quizView(r.Attributes);
+          Object.assign(effect, { q: v.q, round: v.round, counts: v.counts, total: v.total, phones: v.phones });
+        }
       }
       const r = await broadcast(ctx, effect, at, perPhone);
       log(`broadcast "${effect.name}" → ${r.sent} devices in ${r.ms} ms`);

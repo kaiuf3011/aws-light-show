@@ -63,6 +63,30 @@
   .pickBtn { width: 100%; max-width: 320px; height: 64px; border: 0; border-radius: 8px; font-size: 18px; font-weight: 500; color: #fff; cursor: pointer; }
   #rope { font-size: 13px; white-space: pre; }
   #tugInfo { font-size: 14px; color: var(--text-2); min-height: 20px; }
+  #quiz { justify-content: flex-start; padding-top: calc(28px + env(safe-area-inset-top)); overflow-y: auto; gap: 18px; text-align: left; align-items: stretch; }
+  #qTop { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+  #qTop b { color: var(--accent); font-weight: 400; }
+  #qText { font-size: 21px; font-weight: 500; line-height: 1.3; }
+  #qOpts { display: flex; flex-direction: column; gap: 10px; }
+  .qopt { min-height: 60px; display: flex; align-items: center; gap: 14px; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line-strong);
+    background: var(--card); color: var(--text); font: 500 16px var(--mono); text-align: left; cursor: pointer; touch-action: manipulation;
+    transition: opacity .25s var(--ease), border-color .2s, background-color .2s, transform .08s var(--ease); }
+  .qopt:active { transform: scale(.98); }
+  .qopt .k { width: 30px; height: 30px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--text-2); }
+  .qopt.mine { border-color: var(--accent); background: var(--raised); }
+  .qopt.mine .k { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .qopt.dim { opacity: .35; }
+  .qopt.right { border-color: var(--good); background: var(--good); color: #0f0f10; opacity: 1; }
+  .qopt.right .k { border-color: #0f0f10; color: #0f0f10; }
+  .qopt.wrong { border-color: var(--red); opacity: 1; }
+  .qopt.wrong .k { background: var(--red); border-color: var(--red); color: #fff; }
+  #qNote { font-size: 14px; color: var(--text-2); line-height: 1.5; min-height: 21px; }
+  #qNote b { color: var(--accent); font-weight: 400; }
+  #qNote.good b { color: var(--good); }
+  #qNote.bad b { color: var(--red); }
+  #qArt { color: var(--accent); align-self: center; margin-top: 12vh; }
+  #qJoin { display: none; height: 52px; line-height: 52px; text-align: center; border-radius: 8px; background: var(--accent); color: var(--accent-ink);
+    font-size: 16px; font-weight: 500; text-decoration: none; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -101,6 +125,15 @@
     <div id="rope"></div>
     <div id="tugInfo"></div>
   </div>
+</div>
+
+<div id="quiz" class="overlay">
+  <div id="qTop"><span id="qNum"></span><span id="qClock"></span></div>
+  <pre id="qArt" class="art" style="display:none"></pre>
+  <div id="qText"></div>
+  <div id="qOpts"></div>
+  <div id="qNote"></div>
+  <a id="qJoin" target="_blank" rel="noopener">Join the club</a>
 </div>
 
 <div id="charge" class="overlay">
@@ -174,6 +207,7 @@
         else if (m.type === 'effect') player.push(m);
         else if (m.type === 'charge') chargeLevel = Math.max(chargeLevel, m.level);
         else if (m.type === 'tug') tugState = m;
+        else if (m.type === 'answered') onAnswered(m);
       },
     });
     player = EffectPlayer(client);
@@ -200,6 +234,7 @@
     const { effect, t } = player.frame();
     const f = Effects.render(effect, t, me);
     drawTug(effect);
+    drawQuiz(effect);
     const isCharge = !!effect && effect.name === 'charge';
     if (isCharge && chargeId !== effect.goal + ':' + t0Of(effect)) {
       chargeId = effect.goal + ':' + t0Of(effect); sentFirst = false; pendingTaps = 0; chargeLevel = 0; shownLevel = 0;
@@ -292,6 +327,79 @@
     const pos = tugState ? Math.max(-1, Math.min(1, (tugState.b - tugState.a) / tugState.goal)) : 0;
     const k = Math.round((W - 1) / 2 + pos * (W - 1) / 2);
     $('rope').innerHTML = `<span style="color:${teams.A.color}">${'═'.repeat(k)}</span>[█]<span style="color:${teams.B.color}">${'═'.repeat(W - 1 - k)}</span>`;
+  }
+
+  // ----- live quiz: tap an answer; AWS counts one vote per phone -----
+  const QZ = S.quiz || [];
+  const qAns = {};        // round -> { choice, counted }
+  const qScore = {};      // question index -> true / false (last time it was asked)
+  let qFx = null, qSig = '';
+  const JOIN = S.joinUrl && !/REPLACE-ME/.test(S.joinUrl) ? S.joinUrl : '';
+  function onAnswered(m) {
+    const a = m.round && qAns[m.round];
+    if (a) { a.counted = !!m.ok; qSig = ''; }
+    else if (!m.ok && qFx && qAns[qFx.round]) { qAns[qFx.round].counted = false; qSig = ''; }
+  }
+  function answer(i) {
+    if (!qFx || (qFx.phase || 'ask') !== 'ask' || qAns[qFx.round]) return;
+    if (client.serverNow() >= qFx.endsAt) return;
+    qAns[qFx.round] = { choice: i, counted: null };
+    client.send({ action: 'answer', round: qFx.round, choice: i });
+    if (navigator.vibrate) navigator.vibrate(25);
+    qSig = '';
+  }
+  $('qOpts').addEventListener('pointerdown', (e) => {
+    const b = e.target.closest('.qopt'); if (!b) return;
+    e.preventDefault(); answer(Number(b.dataset.i));
+  });
+  function drawQuiz(effect) {
+    const on = !!effect && effect.name === 'quiz';
+    $('quiz').classList.toggle('on', on);
+    if (!on) { qFx = null; return; }
+    qFx = effect;
+    const phase = effect.phase || 'ask';
+    const now = client.serverNow();
+    if (phase === 'done') {
+      const n = Object.values(qScore).filter(Boolean).length, of = QZ.length;
+      const sig = 'done' + n;
+      if (sig !== qSig) {
+        qSig = sig;
+        $('qNum').textContent = 'quiz · done'; $('qClock').textContent = ''; $('qClock').dataset.v = '';
+        $('qArt').style.display = 'block'; setArt($('qArt'), `${n}/${of}`, vw() * 0.8, 22);
+        $('qText').textContent = n === of ? 'Full marks. You already think like a cloud engineer.'
+          : n > 0 ? 'Nice. The club is where the rest clicks.' : 'Zero for now. That is exactly what the club is for.';
+        $('qOpts').innerHTML = ''; $('qNote').textContent = '';
+        if (JOIN) { $('qJoin').href = JOIN; $('qJoin').style.display = 'block'; }
+      }
+      return;
+    }
+    $('qArt').style.display = 'none'; $('qJoin').style.display = 'none';
+    const qi = effect.q || 0, item = QZ[qi] || { q: 'Question ' + (qi + 1), options: ['A', 'B', 'C', 'D'], answer: -1 };
+    const mine = qAns[effect.round];
+    if (phase === 'reveal' && item.answer >= 0) qScore[qi] = !!(mine && mine.counted !== false && mine.choice === item.answer);
+    const left = (effect.endsAt || 0) - now;
+    const clk = phase === 'ask' ? (left > 0 ? `<b>${mmss(left)}</b>` : "time's up") : 'answer';
+    if ($('qClock').dataset.v !== clk) { $('qClock').dataset.v = clk; $('qClock').innerHTML = clk; }
+    const sig = [effect.__at, phase, mine ? mine.choice + ':' + mine.counted : '-', left > 0].join('|');
+    if (sig === qSig) return;
+    qSig = sig;
+    $('qNum').textContent = `question ${qi + 1} / ${QZ.length || 1}`;
+    $('qText').textContent = item.q;
+    $('qOpts').innerHTML = item.options.map((o, i) => {
+      let cls = '';
+      if (phase === 'reveal') cls = i === item.answer ? 'right' : (mine && mine.choice === i ? 'wrong' : 'dim');
+      else if (mine) cls = mine.choice === i ? 'mine' : 'dim';
+      else if (left <= 0) cls = 'dim';
+      return `<button class="qopt ${cls}" data-i="${i}"><span class="k">${'ABCD'[i]}</span><span>${esc(o)}</span></button>`;
+    }).join('');
+    const note = $('qNote'); note.className = '';
+    if (phase === 'reveal') {
+      const ok = qScore[qi];
+      note.className = ok ? 'good' : 'bad';
+      note.innerHTML = (mine ? (ok ? '<b>correct</b> · ' : '<b>not this time</b> · ') : '<b>no answer</b> · ') + esc(item.why || '');
+    } else if (mine) {
+      note.innerHTML = mine.counted === false ? 'too late, the answers had closed' : `<b>locked in · ${'ABCD'[mine.choice]}</b>  look at the screen for the reveal`;
+    } else note.textContent = left > 0 ? 'tap your answer' : "time's up";
   }
 
   $('ready').onclick = start;

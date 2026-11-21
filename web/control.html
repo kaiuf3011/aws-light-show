@@ -95,13 +95,21 @@
   <div class="status" id="tugNote"></div>
   <div class="note">AWS shuffles the phones and deals equal teams, red and blue. 3-2-1, then everyone pulls. The result and the stats readout play by themselves</div>
 
-  <h2><b>03</b> · finale</h2>
-  <button class="accentBtn big" id="finale">Send the join link to every phone</button>
-  <div class="note" id="finaleNote"></div>
-
-  <h2><b>04</b> · show the backend</h2>
+  <h2><b>03</b> · show the backend</h2>
   <button class="big" data-fx='{"name":"backend"}'>Show the backend on the TV</button>
   <div class="note">Live diagram: phones, API Gateway, Lambda, DynamoDB, with real numbers. Any other button (or All off) leaves it</div>
+
+  <h2><b>04</b> · live quiz</h2>
+  <div class="row">
+    <select id="quizSecs" aria-label="Seconds to answer"><option value="15">15 s</option><option value="20" selected>20 s</option><option value="30">30 s</option></select>
+    <button class="primary" style="flex:1" id="quizGo">Ask question 1</button>
+  </div>
+  <div class="status" id="quizNote"></div>
+  <div class="note">One button, pressed again and again: ask, reveal, next question, and finally every phone shows its score. Questions are in show-config.js. <a href="#" id="quizReset" style="color:var(--text-2)">Restart quiz</a></div>
+
+  <h2><b>05</b> · finale</h2>
+  <button class="accentBtn big" id="finale">Send the join link to every phone</button>
+  <div class="note" id="finaleNote"></div>
 
   <h2><b>--</b> · stop</h2>
   <button class="off big" data-fx='{"name":"off"}'>All off</button>
@@ -171,6 +179,8 @@
           const left = Math.max(0, Math.ceil((m.endsAt - m.now) / 1000));
           $('tugNote').textContent = m.done ? `finished · ${m.teamA.toLowerCase()} ${fmt(m.a)} – ${fmt(m.b)} ${m.teamB.toLowerCase()}` :
             `${m.teamA.toLowerCase()} ${fmt(m.a)} – ${fmt(m.b)} ${m.teamB.toLowerCase()} · ${left}s left`;
+        } else if (m.type === 'quiz') {
+          onQuizState(m);
         } else if (m.type === 'effect') {
           player.push(m);
           lastFx = m.effect.name;
@@ -187,6 +197,40 @@
     let lastFx = null;
     setInterval(() => { if (lastFx === 'charge' || lastFx === 'powered') client.send({ action: 'charge' }); }, 1000);
     setInterval(() => { if (lastFx === 'tug' || lastFx === 'tugwin') client.send({ action: 'tugstate' }); }, 1000);
+    // ----- live quiz: one button walks through ask -> reveal -> ... -> scores -----
+    const QZ = S.quiz || [];
+    const quizSteps = [];
+    QZ.forEach((_, q) => { quizSteps.push({ phase: 'ask', q }); quizSteps.push({ phase: 'reveal', q }); });
+    quizSteps.push({ phase: 'done' });
+    let quizIdx = 0;
+    try { quizIdx = Number(sessionStorage.getItem('quizIdx')) || 0; } catch {}
+    function quizLabel() {
+      const st = quizSteps[quizIdx];
+      $('quizGo').textContent = !st ? 'Quiz finished · restart' : st.phase === 'ask' ? `Ask question ${st.q + 1} of ${QZ.length}`
+        : st.phase === 'reveal' ? `Reveal answer ${st.q + 1}` : 'Show scores on every phone';
+      try { sessionStorage.setItem('quizIdx', String(quizIdx)); } catch {}
+    }
+    $('quizGo').onclick = () => {
+      if (!QZ.length) { $('quizNote').textContent = 'No questions in show-config.js'; return; }
+      if (quizIdx >= quizSteps.length) quizIdx = 0;
+      const st = quizSteps[quizIdx++];
+      fire({ name: 'quiz', phase: st.phase, q: st.q, seconds: Number($('quizSecs').value) });
+      quizLabel();
+    };
+    $('quizReset').onclick = (e) => { e.preventDefault(); quizIdx = 0; quizLabel(); $('quizNote').textContent = 'quiz reset to question 1'; };
+    quizLabel();
+    function onQuizState(m) {
+      const item = QZ[m.q] || {};
+      if (m.phase === 'ask') {
+        const left = Math.max(0, Math.ceil((m.endsAt - m.now) / 1000));
+        $('quizNote').textContent = `Q${m.q + 1} · ${fmt(m.total)} of ${fmt(m.phones)} answered · ${left ? left + 's left' : "time's up, reveal when ready"}`;
+      } else if (m.phase === 'reveal') {
+        const pct = m.total && item.answer >= 0 ? Math.round(m.counts[item.answer] / m.total * 100) : 0;
+        $('quizNote').textContent = `Q${m.q + 1} · ${pct}% right · A ${m.counts[0]} · B ${m.counts[1]} · C ${m.counts[2]} · D ${m.counts[3]}`;
+      }
+    }
+    setInterval(() => { if (lastFx === 'quiz') client.send({ action: 'quizstate' }); }, 1000);
+
     $('tugGo').onclick = () => fire({ name: 'tug', mode: 'random', seconds: Number($('tugSecs').value) });
     // QR countdown, then Power-Up fires by itself from this page
     let lobbyTimer = null, lobbyEnd = 0;

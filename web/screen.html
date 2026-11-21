@@ -144,6 +144,7 @@
 <script src="effects.js"></script>
 <script src="client.js"></script>
 <script src="vendor/qrcode.js"></script>
+<script src="quiz-tv.js"></script>
 <script>
 (function () {
   const S = window.SHOW;
@@ -293,7 +294,7 @@
     lastStats = m;
   }
 
-  let client = null;
+  let client = null, quiz = null;
   client = ShowClient({
     role: 'screen',
     onStatus: (s) => {
@@ -302,6 +303,7 @@
       if (s === 'open') addLog(`screen connected to aws · ${region}`);
     },
     onMessage: (m) => {
+      if (quiz) quiz.onMessage(m);
       if (m.type === 'stats') onStats(m);
       else if (m.type === 'effect') {
         player.push(m);
@@ -316,6 +318,7 @@
     },
   });
   const player = EffectPlayer(client);
+  quiz = QuizTV(client);
   setInterval(() => client.send({ action: 'stats' }), 1500);
   let charge = { level: 0, tappers: 0 }, curName = null, powerShown = 0;
   setInterval(() => { if (curName === 'charge' || curName === 'powered') client.send({ action: 'charge' }); }, 400);
@@ -333,6 +336,7 @@
     $('corner').textContent = Math.round(shown) + ' phones live';
 
     const { effect, t } = player.frame();
+    quiz.frame(effect);
     let f = Effects.render(effect, t, screenMe);
     let label = f.big;
     if (effect && effect.name === 'team') { f = { bg: 'var(--bg)' }; label = 'team colours'; }

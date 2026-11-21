@@ -55,6 +55,12 @@ function phone(i) {
           }, 600);
         }, Math.max(0, m.effect.startsAt - (Date.now() + offset)) + Math.random() * 1500);
       }
+      if (m.effect.name === 'quiz' && m.effect.phase === 'ask' && Math.random() < 0.9) {
+        const right = [1, 3, 1][m.effect.q] ?? 0;
+        const choice = Math.random() < 0.6 ? right : Math.floor(Math.random() * 4);
+        setTimeout(() => ws.readyState === 1 && ws.send(JSON.stringify({ action: 'answer', round: m.effect.round, choice })),
+          Math.max(0, m.at - (Date.now() + offset)) + 1500 + Math.random() * 12000);
+      }
       if (m.effect.name === 'charge' && Math.random() < 0.7) {
         let first = true;
         setTimeout(() => {

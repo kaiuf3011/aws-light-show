@@ -32,6 +32,8 @@ const wss = new WebSocketServer({ server, path: '/ws' });
 const conns = new Map(); // ws -> info
 let meter = { taps: 0, tappers: 0, goal: 1, active: false, done: false };
 let tug = { a: 0, b: 0, goal: 1, startsAt: 0, endsAt: 0, mode: '', teamA: '', teamB: '', active: false, done: false, winner: '' };
+let quiz = { round: 0, q: 0, phase: 'none', counts: [0, 0, 0, 0], total: 0, phones: 0, endsAt: 0 };
+const quizView = () => ({ type: 'quiz', ...quiz, counts: [...quiz.counts], now: Date.now() });
 const tugView = () => ({ type: 'tug', ...tug, now: Date.now() });
 function finishTug() {
   if (tug.done) return;
@@ -91,6 +93,15 @@ wss.on('connection', (ws) => {
       if (Math.abs(tug.a - tug.b) >= tug.goal) finishTug();
       return;
     }
+    if (m.action === 'answer') {
+      const choice = m.choice | 0, round = Number(m.round) || 0;
+      if (choice < 0 || choice > 3 || !round || me.quizRound === round) return;
+      me.quizRound = round;
+      if (quiz.round !== round || quiz.phase !== 'ask' || Date.now() - 1500 >= quiz.endsAt) return send(ws, { type: 'answered', ok: false });
+      quiz.counts[choice]++; quiz.total++;
+      return send(ws, { type: 'answered', ok: true, round, choice });
+    }
+    if (m.action === 'quizstate') return send(ws, quizView());
     if (m.action === 'tugstate') {
       send(ws, tugView());
       if (tug.active && Date.now() >= tug.endsAt) finishTug();
@@ -119,6 +130,18 @@ wss.on('connection', (ws) => {
         effect.endsAt = effect.startsAt + effect.seconds * 1000;
         tug = { a: 0, b: 0, goal: effect.goal, startsAt: effect.startsAt, endsAt: effect.endsAt, mode: effect.mode,
           teamA: effect.a, teamB: effect.b, active: true, done: false, winner: '', phones };
+      }
+      if (effect.name === 'quiz') {
+        effect.phase = effect.phase || 'ask';
+        if (effect.phase === 'ask') {
+          const at = Date.now() + 1200;
+          effect.seconds = effect.seconds || 20; effect.round = at; effect.endsAt = at + effect.seconds * 1000;
+          effect.phones = [...conns.values()].filter((c) => c.role === 'phone').length;
+          quiz = { round: at, q: effect.q || 0, phase: 'ask', counts: [0, 0, 0, 0], total: 0, phones: effect.phones, endsAt: effect.endsAt };
+        } else if (effect.phase === 'reveal') {
+          quiz.phase = 'reveal';
+          Object.assign(effect, { q: quiz.q, round: quiz.round, counts: [...quiz.counts], total: quiz.total, phones: quiz.phones });
+        }
       }
       const t = Date.now();
       const n = broadcast(effect, 1200, perPhone);
