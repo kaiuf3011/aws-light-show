@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Built live on stage</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0f0f10; color: #ededed; font-family: ui-monospace, Menlo, monospace; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; text-align: center; }
+  #n { font-size: 22vw; line-height: 1; color: #ff9900; }
+  button { font: 500 22px ui-monospace, Menlo, monospace; padding: 18px 44px; border: 0; border-radius: 8px; background: #ff9900; color: #0f0f10; cursor: pointer; }
+  p { color: #8a8a90; margin: 0; }
+</style>
+</head>
+<body>
+  <p>built live on stage · S3 → API Gateway → Lambda → DynamoDB</p>
+  <div id="n">0</div>
+  <button id="b">Tap me</button>
+  <script>
+    // Paste your API Gateway "Invoke URL" here, ending in /click
+    const API = "PASTE-INVOKE-URL-HERE/click";
+    const b = document.getElementById("b"), n = document.getElementById("n");
+    b.onclick = async () => {
+      b.disabled = true;
+      try { const r = await fetch(API); const j = await r.json(); n.textContent = j.clicks; }
+      catch (e) { n.textContent = "error"; }
+      b.disabled = false;
+    };
+  </script>
+</body>
+</html>
