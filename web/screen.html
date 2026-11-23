@@ -405,7 +405,7 @@
       $('tv' + side).textContent = t2.name; $('tv' + side).style.color = t2.color;
       $('b' + side).classList.remove('pop');
     }
-    $('tvTitle').textContent = 'tug of war'; $('tvTitle').classList.remove('big'); $('arena').classList.remove('shake');
+    $('tvTitle').textContent = 'tug of war'; $('tvTitle').classList.remove('big'); if (UI().hint) $('tvHint').textContent = UI().hint; $('arena').classList.remove('shake');
     $('tugv').classList.remove('final'); replay($('gA'), 'enterA'); replay($('gB'), 'enterB'); replay($('vs'), 'slam');
     talk.boomAcc = { A: 0, B: 0 }; talk.ms = 0; talk.timerTxt = ''; talk.started = false;
     document.querySelectorAll('#tugv .boom').forEach((e) => e.remove());
@@ -456,6 +456,7 @@
     el.style.fontSize = (3 + Math.random() * 2.6).toFixed(1) + 'vw';
     $('tugv').appendChild(el); setTimeout(() => el.remove(), 1100);
   }
+  const UI = () => (S.brainrot && S.brainrot.ui) || {};
   function announce(text, bg) { const el = $('announce'); el.textContent = text; el.style.background = bg || 'var(--accent)'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
   function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
   function flash(color) { const el = $('tugFlash'); el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
@@ -530,7 +531,7 @@
       else timer = 'TIME';
       art($('tvTimer'), timer, 30 * VW(), 11 * VH()); $('tvTimer').style.color = col;
       if (timer !== talk.timerTxt) { if (now < effect.startsAt || (left <= 5 && left > 0)) replay($('tvTimer'), 'pop'); talk.timerTxt = timer; }
-      if (!talk.started && now >= effect.startsAt) { talk.started = true; announce('PULL PULL PULL'); flash('#ffffff'); }
+      if (!talk.started && now >= effect.startsAt) { talk.started = true; announce(UI().go || 'PULL PULL PULL'); flash('#ffffff'); }
       const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
       tugPos += (goal - tugPos) * 0.15;
       const W = 61, mid = (W - 1) / 2, k = Math.round(mid + tugPos * mid);
@@ -571,13 +572,13 @@
       } else if (running) {
         if (left <= 5 && !talk.said.final) {
           talk.said.final = 1; say('A', 'final', now); say('B', 'final', now + 700);
-          $('tvTitle').textContent = 'final 5 seconds'; $('tvTitle').classList.add('big'); $('arena').classList.add('shake');
-          $('tugv').classList.add('final'); $('tugv').style.setProperty('--speed', (leader ? teams[leader].color : '#ffffff') + '22'); announce('FINAL 5 SECONDS', '#ff1744');
+          $('tvTitle').textContent = UI().finalTitle || 'final 5 seconds'; $('tvTitle').classList.add('big'); $('arena').classList.add('shake');
+          $('tugv').classList.add('final'); $('tugv').style.setProperty('--speed', (leader ? teams[leader].color : '#ffffff') + '22'); announce(UI().finalBanner || 'FINAL 5 SECONDS', '#ff1744');
         } else if (left > 5 && leader && leader !== talk.leader && now > effect.startsAt + 900) {
           talk.leader = leader; flash(teams[leader].color); replay($('g' + leader), 'hop'); replay($('arena'), 'punch');
           { const c = centerOf($('g' + leader)); burst(c.x, c.y, teams[leader].color, 40); burst(c.x, c.y, '#ffcc00', 20); }
           say(leader, 'lead', now); say(leader === 'A' ? 'B' : 'A', 'behind', now + 1600);
-          $('tvTitle').textContent = `${(teams[leader].short || teams[leader].name).toLowerCase()} takes the lead`; $('tvTitle').classList.add('big');
+          $('tvTitle').textContent = (UI().lead || '{name} takes the lead').replace('{name}', (teams[leader].short || teams[leader].name).toLowerCase()); $('tvTitle').classList.add('big');
           clearTimeout(talk.tt); talk.tt = setTimeout(() => { if (!talk.said.final) $('tvTitle').classList.remove('big'); }, 1800);
           talk.next = now + 4200;
         } else if (left > 5 && now >= talk.next) {

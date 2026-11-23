@@ -310,7 +310,7 @@
     const r = $('pullBtn').getBoundingClientRect();
     el.style.left = (e.clientX || r.left + r.width / 2) + (Math.random() - 0.5) * 80 + 'px';
     el.style.top = (e.clientY || r.top + r.height / 2) - 20 + 'px';
-    el.style.color = Math.random() < 0.5 ? teams[me.tugTeam].color : '#ffcc00';
+    el.style.color = Math.random() < 0.6 ? '#ffcc00' : '#ffffff';
     el.style.setProperty('--r', ((Math.random() - 0.5) * 30).toFixed(0) + 'deg');
     document.body.appendChild(el); setTimeout(() => el.remove(), 800);
   }
@@ -364,7 +364,10 @@
     if (tugState && now >= effect.startsAt && now < effect.endsAt) {
       const mine = team === 'A' ? tugState.a : tugState.b, theirs = team === 'A' ? tugState.b : tugState.a;
       const other = teams[team === 'A' ? 'B' : 'A'], otherName = (other.short || other.name);
-      const txt = mine > theirs ? `winning by ${fmt(mine - theirs)}` : mine < theirs ? `${otherName.toLowerCase()} leads by ${fmt(theirs - mine)}. PULL` : 'dead level';
+      const U = (S.brainrot && S.brainrot.ui) || {};
+      const txt = mine > theirs ? (U.phoneWinning || 'winning by {n}').replace('{n}', fmt(mine - theirs))
+        : mine < theirs ? (U.phoneLosing || '{name} leads by {n}. PULL').replace('{name}', otherName.toLowerCase()).replace('{n}', fmt(theirs - mine))
+        : (U.phoneLevel || 'dead level');
       if (lead.textContent !== txt) lead.textContent = txt;
       lead.className = mine > theirs ? 'win' : mine < theirs ? 'lose' : '';
     } else { lead.textContent = ''; lead.className = ''; }
