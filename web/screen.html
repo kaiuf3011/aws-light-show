@@ -45,18 +45,47 @@
   #power.on { display: block; }
   #power b { color: var(--accent); font-weight: 400; }
 
-  #tugv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4.5vh; background: var(--bg); }
+  #tugv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2.6vh; background: var(--bg); overflow: hidden; }
   #tugv.on { display: flex; }
   .tv-title { font-size: 1.2vw; color: var(--muted); }
-  .teams { display: flex; justify-content: space-between; align-items: flex-end; width: 88vw; }
-  .team .art { font-size: 1vw; }
-  .team .pulls { font-size: 1.2vw; color: var(--text-2); margin-top: 1.4vh; }
+  #tvTitle.big { font-size: 2.6vw; font-weight: 500; color: #fff; animation: blink .35s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  #tugFlash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+  #tugFlash.go { animation: flash .7s ease-out; }
+  @keyframes flash { 0% { opacity: .55; } 100% { opacity: 0; } }
+  .arena { display: flex; align-items: flex-end; justify-content: space-between; width: 82vw; height: 50vh; }
+  .arena.shake { animation: shake .12s linear infinite; }
+  @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,3px); } 50% { transform: translate(5px,-4px); } 75% { transform: translate(-3px,-2px); } }
+  .fighter { position: relative; width: 30vw; display: flex; flex-direction: column; align-items: center; will-change: transform; transform-origin: 50% 100%; }
+  .fighter img { width: 21vw; height: 21vw; object-fit: cover; display: block; border: .35vw solid; border-radius: 1.2vw; background: #1d1d20; }
+  .fighter.png img { object-fit: contain; border-color: transparent !important; background: transparent; }
+  .fname { font-size: 1.8vw; font-weight: 500; margin-top: 1.4vh; text-align: center; white-space: nowrap; }
+  .fighter .pulls { font-size: 1.2vw; color: var(--text-2); margin-top: .6vh; }
+  .vs { font-size: 6vw; font-weight: 500; color: var(--accent); align-self: center; animation: vs 1.1s ease-in-out infinite; }
+  @keyframes vs { 0%,100% { transform: scale(1) rotate(-4deg); } 50% { transform: scale(1.18) rotate(4deg); } }
+  .bubble { position: absolute; bottom: calc(100% + 1vh); max-width: 30vw; padding: 1.1vh 1.4vw; background: #fff; color: #0f0f10; border-radius: 1vw;
+    font-size: 1.55vw; font-weight: 500; line-height: 1.25; text-align: center; opacity: 0; pointer-events: none; z-index: 2; white-space: normal; }
+  .bubble::after { content: ''; position: absolute; top: 100%; left: 50%; margin-left: -1vw; border: 1vw solid transparent; border-top-color: #fff; }
+  #bA, #wB1 { left: 0; } #bB, #wB2 { right: 0; }
+  #bA::after, #wB1::after { left: 22%; } #bB::after, #wB2::after { left: 78%; }
+  .fighter .bubble { width: max-content; max-width: 26vw; }
+  .bubble.pop { animation: pop 2.9s cubic-bezier(.2,1.6,.4,1) forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.2) rotate(-8deg); } 8% { opacity: 1; transform: scale(1.12) rotate(3deg); }
+    14% { transform: scale(1) rotate(0); } 88% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(-1vh); } }
   #rope { font-size: 2vw; line-height: 1.25; }
   #tvHint { font-size: 1.15vw; color: var(--muted); }
+  #tvTimer .art, #tvTimer { line-height: 1; }
 
-  #winv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4vh; background: var(--bg); }
+  #winv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; background: var(--bg); overflow: hidden; }
   #winv.on { display: flex; }
   #winScore { font-size: 1.4vw; color: var(--text-2); }
+  .winRow { display: flex; align-items: flex-end; justify-content: center; gap: 8vw; }
+  .winRow .fighter img { width: 26vw; height: 26vw; }
+  .winRow .fighter.loser img { width: 13vw; height: 13vw; filter: grayscale(1) brightness(.6); transform: rotate(-12deg); }
+  .winRow .fighter.slam { animation: slam .8s cubic-bezier(.2,1.5,.4,1) both; }
+  @keyframes slam { 0% { transform: scale(3) rotate(-20deg); opacity: 0; } 60% { transform: scale(.92) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+  .winRow .fighter.winner img { animation: bounce .6s ease-in-out .8s infinite; }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2.2vh); } }
 
   #teaser { display: none; align-items: center; justify-content: center; background: var(--bg-deep); }
   #teaser.on { display: flex; }
@@ -114,17 +143,25 @@
 <div id="power"></div>
 
 <div id="tugv" class="layer">
-  <div class="tv-title">tug of war</div>
+  <div id="tugFlash"></div>
+  <div class="tv-title" id="tvTitle">tug of war</div>
   <pre class="art" id="tvTimer"></pre>
-  <div class="teams">
-    <div class="team"><pre class="art" id="tvA"></pre><div class="pulls" id="tvAn"></div></div>
-    <div class="team" style="text-align:right"><pre class="art" id="tvB"></pre><div class="pulls" id="tvBn"></div></div>
+  <div class="arena" id="arena">
+    <div class="fighter" id="fA"><div class="bubble" id="bA"></div><img id="iA" alt=""><div class="fname" id="tvA"></div><div class="pulls" id="tvAn"></div></div>
+    <div class="vs">VS</div>
+    <div class="fighter" id="fB"><div class="bubble" id="bB"></div><img id="iB" alt=""><div class="fname" id="tvB"></div><div class="pulls" id="tvBn"></div></div>
   </div>
   <pre class="art" id="rope"></pre>
   <div id="tvHint">tap pull on your phone, as fast as you can</div>
 </div>
 
-<div id="winv" class="layer"><pre class="art" id="winArt"></pre><div id="winScore"></div></div>
+<div id="winv" class="layer">
+  <div class="winRow">
+    <div class="fighter" id="wF1"><div class="bubble" id="wB1"></div><img id="wI1" alt=""></div>
+    <div class="fighter" id="wF2"><div class="bubble" id="wB2"></div><img id="wI2" alt=""></div>
+  </div>
+  <pre class="art" id="winArt"></pre><div id="winScore"></div>
+</div>
 
 <div id="teaser" class="layer">
   <div><pre class="art" id="term"></pre><div id="tzQ"></div><div id="tzCta"></div></div>
@@ -323,6 +360,29 @@
   let charge = { level: 0, tappers: 0 }, curName = null, powerShown = 0;
   setInterval(() => { if (curName === 'charge' || curName === 'powered') client.send({ action: 'charge' }); }, 400);
   let tug = null, tugPos = 0;
+  // ----- tug of war trash talk -----
+  const talk = { round: null, said: {}, queue: [], leader: null, next: 0, prev: {}, jit: { A: 0, B: 0 }, winFor: null, used: {} };
+  function talkReset(effect, teams) {
+    Object.assign(talk, { round: effect.startsAt, said: {}, queue: [], leader: null, next: effect.startsAt + 3500, prev: {}, jit: { A: 0, B: 0 } });
+    for (const side of ['A', 'B']) {
+      const t2 = teams[side], img = $('i' + side);
+      img.src = t2.img || ''; img.style.display = t2.img ? 'block' : 'none'; img.style.borderColor = t2.color;
+      $('f' + side).classList.toggle('png', String(t2.img || '').endsWith('.png'));
+      $('tv' + side).textContent = t2.name; $('tv' + side).style.color = t2.color;
+      $('b' + side).classList.remove('pop');
+    }
+    $('tvTitle').textContent = 'tug of war'; $('tvTitle').classList.remove('big'); $('arena').classList.remove('shake');
+  }
+  function say(side, kind, at) {
+    const L = (S.brainrot && S.brainrot.lines && S.brainrot.lines[kind]) || {};
+    const arr = L[side] || []; if (!arr.length) return;
+    const key = kind + side, used = talk.used[key] || [];
+    let pool = arr.map((_, i) => i).filter((i) => !used.includes(i)); if (!pool.length) { pool = arr.map((_, i) => i); talk.used[key] = []; }
+    const i = pool[Math.floor(Math.random() * pool.length)]; (talk.used[key] = talk.used[key] || []).push(i);
+    talk.queue.push({ side, at, text: arr[i] }); talk.queue.sort((x, y) => x.at - y.at);
+  }
+  function bubble(el, text) { if (!text) return; el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  function flash(color) { const el = $('tugFlash'); el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
   setInterval(() => { if (curName === 'tug') client.send({ action: 'tugstate' }); }, 300);
 
   const screenMe = { zone: 'center', dept: null, seed: 7 };
@@ -377,7 +437,7 @@
       $('power').innerHTML = `power  [<b>${ASCII.bar(powerShown, 32)}</b>] ${pct}%   ${charge.tappers || 0} tapping`;
     }
 
-    // Tug of war: block-letter timer and a rope made of characters
+    // Tug of war: two fighters, trash talk, a rope made of characters
     const tugOn = name === 'tug';
     $('tugv').classList.toggle('on', tugOn);
     if (tugOn) {
@@ -385,15 +445,14 @@
       const teams = Effects.tugTeams(effect);
       const now = client.serverNow();
       const sc = tug && tug.startsAt === effect.startsAt ? tug : { a: 0, b: 0, goal: effect.goal || 1 };
-      art($('tvA'), teams.A.name, 30 * VW(), 10 * VH()); $('tvA').style.color = teams.A.color;
-      art($('tvB'), teams.B.name, 30 * VW(), 10 * VH()); $('tvB').style.color = teams.B.color;
+      if (talk.round !== effect.startsAt) talkReset(effect, teams);
       $('tvAn').textContent = `${effect.sizeA || 0} phones · ${fmt(sc.a)} pulls`;
       $('tvBn').textContent = `${fmt(sc.b)} pulls · ${effect.sizeB || 0} phones`;
-      let timer, col = 'var(--text)';
+      let timer, col = 'var(--text)', left = 99;
       if (now < effect.startsAt) { timer = String(Math.ceil((effect.startsAt - now) / 1000)); col = 'var(--accent)'; }
-      else if (now < effect.endsAt) { const r = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(r / 60)}:${String(r % 60).padStart(2, '0')}`; if (r <= 5) col = 'var(--red)'; }
+      else if (now < effect.endsAt) { left = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; if (left <= 5) col = 'var(--red)'; }
       else timer = 'TIME';
-      art($('tvTimer'), timer, 50 * VW(), 18 * VH()); $('tvTimer').style.color = col;
+      art($('tvTimer'), timer, 30 * VW(), 11 * VH()); $('tvTimer').style.color = col;
       const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
       tugPos += (goal - tugPos) * 0.15;
       const W = 61, mid = (W - 1) / 2, k = Math.round(mid + tugPos * mid);
@@ -401,6 +460,37 @@
         `${' '.repeat(mid + 1)}<span class="muted">│</span>\n` +
         `<span style="color:${teams.A.color}">${'═'.repeat(k)}</span>[█]<span style="color:${teams.B.color}">${'═'.repeat(W - 1 - k)}</span>\n` +
         `${' '.repeat(mid + 1)}<span class="muted">│</span>`;
+      // fighters: the side that is winning grows, both lean back and shake when their pulls come in
+      const running = now >= effect.startsAt && now < effect.endsAt;
+      for (const [side, sign, score] of [['A', -1, sc.a], ['B', 1, sc.b]]) {
+        const lead = side === 'A' ? -tugPos : tugPos;
+        const got = score - (talk.prev[side] || 0); talk.prev[side] = score;
+        talk.jit[side] = Math.min(14, talk.jit[side] * 0.85 + (running ? got * 0.6 : 0));
+        const j = talk.jit[side], jx = (Math.random() - 0.5) * j, jy = (Math.random() - 0.5) * j * 0.6;
+        const sca = 1 + 0.28 * lead, rot = sign * (running ? 7 + 4 * Math.sin(now / 90) : 0);
+        $('f' + side).style.transform = `translate(${jx}px, ${jy}px) scale(${sca.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`;
+      }
+      // who says what, and when
+      const leader = sc.a > sc.b ? 'A' : sc.b > sc.a ? 'B' : null;
+      if (now < effect.startsAt) {
+        if (!talk.said.start) { talk.said.start = 1; say('A', 'start', now); say('B', 'start', now + 1500); }
+      } else if (running) {
+        if (left <= 5 && !talk.said.final) {
+          talk.said.final = 1; say('A', 'final', now); say('B', 'final', now + 700);
+          $('tvTitle').textContent = 'final 5 seconds'; $('tvTitle').classList.add('big'); $('arena').classList.add('shake');
+        } else if (left > 5 && leader && leader !== talk.leader && now > effect.startsAt + 900) {
+          talk.leader = leader; flash(teams[leader].color);
+          say(leader, 'lead', now); say(leader === 'A' ? 'B' : 'A', 'behind', now + 1600);
+          $('tvTitle').textContent = `${(teams[leader].short || teams[leader].name).toLowerCase()} takes the lead`; $('tvTitle').classList.add('big');
+          clearTimeout(talk.tt); talk.tt = setTimeout(() => { if (!talk.said.final) $('tvTitle').classList.remove('big'); }, 1800);
+          talk.next = now + 4200;
+        } else if (left > 5 && now >= talk.next) {
+          const who = leader || (Math.random() < 0.5 ? 'A' : 'B');
+          say(who, leader ? 'lead' : 'start', now); say(who === 'A' ? 'B' : 'A', leader ? 'behind' : 'start', now + 1600);
+          talk.next = now + 4400;
+        }
+      }
+      while (talk.queue.length && talk.queue[0].at <= now) { const q = talk.queue.shift(); bubble($('b' + q.side), q.text); }
     } else tugPos = 0;
 
     // result, then the terminal readout with the curiosity hook
@@ -412,8 +502,23 @@
       label = ''; f = { bg: 'var(--bg)' };
       const teams = Effects.tugTeams(effect);
       const draw = effect.winner === 'draw';
-      art($('winArt'), draw ? 'DRAW' : teams[effect.winner].name + ' WINS', 86 * VW(), 30 * VH());
-      $('winArt').style.color = t < 400 ? '#ffffff' : draw ? 'var(--text)' : teams[effect.winner].color;
+      const W = draw ? 'A' : effect.winner, L = W === 'A' ? 'B' : 'A';
+      if (talk.winFor !== effect.__at) {
+        talk.winFor = effect.__at;
+        const F = S.brainrot && S.brainrot.lines || {};
+        for (const [n, side, role] of [[1, W, draw ? 'winner' : 'winner'], [2, L, draw ? 'winner' : 'loser']]) {
+          const img = $('wI' + n), t2 = teams[side];
+          img.src = t2.img || ''; img.style.display = t2.img ? 'block' : 'none'; img.style.borderColor = t2.color;
+          const fig = $('wF' + n); fig.className = 'fighter ' + role + (String(t2.img).endsWith('.png') ? ' png' : '');
+          void fig.offsetWidth; if (n === 1 || draw) fig.classList.add('slam');
+        }
+        const pick = (arr) => (arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : '');
+        if (draw) { setTimeout(() => bubble($('wB1'), pick(F.draw)), 600); setTimeout(() => bubble($('wB2'), pick(F.draw)), 1400); }
+        else { setTimeout(() => bubble($('wB1'), pick(F.win && F.win[W])), 700); setTimeout(() => bubble($('wB2'), pick(F.lose && F.lose[L])), 1900); }
+      }
+      const winName = draw ? 'DRAW' : (teams[W].short || teams[W].name) + ' WINS';
+      art($('winArt'), winName, 80 * VW(), 16 * VH());
+      $('winArt').style.color = t < 400 ? '#ffffff' : draw ? 'var(--text)' : teams[W].color;
       $('winScore').textContent = `${teams.A.name.toLowerCase()} ${fmt(effect.scoreA)}  ·  ${fmt(effect.scoreB)} ${teams.B.name.toLowerCase()}`;
     }
     if (teaserOn) {

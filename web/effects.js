@@ -37,7 +37,12 @@
       if (cb === ca) cb = '#ffffff';
       return { A: { name: effect.a, color: ca }, B: { name: effect.b, color: cb } };
     }
-    if (effect.mode === 'random') return { A: { name: 'RED', color: '#ff1744' }, B: { name: 'BLUE', color: '#2979ff' } };
+    if (effect.mode === 'random') {
+      const F = window.SHOW && window.SHOW.brainrot;
+      if (F && F.A && F.B) return { A: { name: F.A.name, color: F.A.color || '#ff1744', img: F.A.img, short: F.A.short },
+                                    B: { name: F.B.name, color: F.B.color || '#2979ff', img: F.B.img, short: F.B.short } };
+      return { A: { name: 'RED', color: '#ff1744' }, B: { name: 'BLUE', color: '#2979ff' } };
+    }
     return { A: { name: 'LEFT', color: '#ff1744' }, B: { name: 'RIGHT', color: '#2979ff' } };
   }
   function tugMyTeam(effect, me) {

@@ -7,6 +7,6 @@
     "fake": "node fake-phones.mjs"
   },
   "dependencies": {
-    "ws": "^8.18.0"
+    "ws": "^8.23.0"
   }
 }

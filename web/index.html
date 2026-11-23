@@ -63,6 +63,12 @@
   .pickBtn { width: 100%; max-width: 320px; height: 64px; border: 0; border-radius: 8px; font-size: 18px; font-weight: 500; color: #fff; cursor: pointer; }
   #rope { font-size: 13px; white-space: pre; }
   #tugInfo { font-size: 14px; color: var(--text-2); min-height: 20px; }
+  #tugAvatar { width: 34vw; max-width: 150px; aspect-ratio: 1; object-fit: cover; border-radius: 14px; border: 3px solid; display: none; background: #1d1d20;
+    transition: transform .08s var(--ease); }
+  #tugAvatar.png { object-fit: contain; border-color: transparent !important; background: transparent; }
+  #tugAvatar.hit { transform: scale(1.12) rotate(-6deg); }
+  #tugPlay.with-avatar { gap: 14px !important; }
+  #tugPlay.with-avatar .press { width: 56vw; height: 56vw; max-width: 240px; max-height: 240px; }
   #quiz { justify-content: flex-start; padding-top: calc(28px + env(safe-area-inset-top)); overflow-y: auto; gap: 18px; text-align: left; align-items: stretch; }
   #qTop { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
   #qTop b { color: var(--accent); font-weight: 400; }
@@ -120,6 +126,7 @@
     <button class="pickBtn" id="pickB"></button>
   </div>
   <div id="tugPlay" style="display:none;flex-direction:column;align-items:center;gap:24px;width:100%">
+    <img id="tugAvatar" alt="">
     <div class="ov-title" id="tugName"></div>
     <button class="press" id="pullBtn"><pre class="art" id="pullArt"></pre></button>
     <div id="rope"></div>
@@ -281,7 +288,7 @@
     if (now < tugFx.startsAt || now >= tugFx.endsAt) return;
     tugPending++;
     me.tugPulls = (me.tugPulls || 0) + 1;
-    hit($('pullBtn'));
+    hit($('pullBtn')); $('tugAvatar').classList.add('hit'); setTimeout(() => $('tugAvatar').classList.remove('hit'), 90);
   });
   $('pickA').onclick = () => { me.tugPick = 'A'; };
   $('pickB').onclick = () => { me.tugPick = 'B'; };
@@ -303,12 +310,18 @@
       return;
     }
     const col = teams[team].color;
-    $('tugName').textContent = 'Team ' + teams[team].name.toLowerCase();
+    $('tugName').textContent = teams[team].img ? 'Team ' + teams[team].name : 'Team ' + teams[team].name.toLowerCase();
+    const av = $('tugAvatar');
+    if (teams[team].img) {
+      if (av.dataset.src !== teams[team].img) { av.src = teams[team].img; av.dataset.src = teams[team].img; }
+      av.style.display = 'block'; av.style.borderColor = teams[team].color; av.classList.toggle('png', teams[team].img.endsWith('.png'));
+      $('tugPlay').classList.add('with-avatar');
+    } else { av.style.display = 'none'; $('tugPlay').classList.remove('with-avatar'); }
     $('tugName').style.color = col;
     $('pullBtn').style.background = col;
     $('pullBtn').style.color = '#fff';
     const now = client.serverNow();
-    const size = Math.min(vw() * 0.72, 300) * 0.8;
+    const size = (teams[team].img ? Math.min(vw() * 0.56, 240) : Math.min(vw() * 0.72, 300)) * 0.8;
     if (now < effect.startsAt) {
       setArt($('pullArt'), String(Math.ceil((effect.startsAt - now) / 1000)), size * 0.45, 22);
       $('pullBtn').classList.add('wait');

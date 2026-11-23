@@ -7,6 +7,25 @@ window.SHOW = {
   // Link students land on at the very end (Google Form / WhatsApp group / Instagram)
   joinUrl: 'https://forms.gle/REPLACE-ME',
 
+  // Tug of war fighters. Team A is the left side of the TV, team B the right.
+  // Lines are picked at random; edit them freely. Images live in web/brainrot/.
+  brainrot: {
+    A: { name: 'SHERU BHAI', img: 'brainrot/sheru.jpg', color: '#ff1744' },
+    B: { name: 'TUNG TUNG TUNG SAHUR', short: 'TUNG TUNG', img: 'brainrot/tung.png', color: '#2979ff' },
+    lines: {
+      start: { A: ['Ye Sheru Bhai ka area hai.', 'Rope chhod de, chhotu.', 'Tadban tadban.'],
+               B: ['Tung tung tung tung SAHUR.', 'Uth jao. Sahur ka time ho gaya.', 'Bat ready hai, bhai.'] },
+      lead:  { A: ['Dekha? Sheru Bhai kabhi nahi haarta.', 'Lakdi ka khamba, bas itna hi?', 'Chain gold ki, grip bhi gold ki.', 'Jungle ka raja kaun? Bolo.'],
+               B: ['TUNG TUNG TUNG. Thak gaye kya?', 'Lion hai ya billi?', 'Sahur se pehle khatam karunga.', 'Sher ko bhi neend aati hai.'] },
+      behind:{ A: ['Ruk ja, abhi asli power aayegi.', 'Red team, aur zor se.', 'Ye sirf warm-up tha.'],
+               B: ['Tung... tung... blue, help karo.', 'Bat abhi bhi mere paas hai.', 'Wait, main abhi utha hi tha.'] },
+      final: { A: ['LAST 5 SECONDS. PURA JUNGLE KHINCHO.'], B: ['TUNG TUNG TUNG TUNG TUNG TUNG.'] },
+      win:   { A: ['Area bhi mera, rope bhi mera.'], B: ['SAHUR WINS. Sab uth gaye.'] },
+      lose:  { A: ['Rematch. Abhi ke abhi.'], B: ['Tung... tung... so jaata hoon.'] },
+      draw:  ['Barabar? Rematch.'],
+    },
+  },
+
   // Shown on phones and the big screen right after a Tug of War result. {total} {phones} {seconds} {mine} are filled in.
   tugTeaser: {
     question: 'How did AWS count {total} pulls from {phones} phones without missing a single one?',
