@@ -76,6 +76,38 @@
   #tvHint { font-size: 1.15vw; color: var(--muted); }
   #tvTimer .art, #tvTimer { line-height: 1; }
 
+
+  /* ---- brainrot extras ---- */
+  #fxc { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 40; display: none; }
+  #fxc.on { display: block; }
+  .fbody { will-change: transform; }
+  .fbody.enterA { animation: enterA .9s cubic-bezier(.2,1.4,.4,1) both; }
+  .fbody.enterB { animation: enterB .9s cubic-bezier(.2,1.4,.4,1) .15s both; }
+  @keyframes enterA { 0% { transform: translateX(-70vw) rotate(-25deg); } 100% { transform: none; } }
+  @keyframes enterB { 0% { transform: translateX(70vw) rotate(25deg); } 100% { transform: none; } }
+  .fbody.hop { animation: hop .55s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes hop { 0% { transform: none; } 35% { transform: translateY(-7vh) scale(1.08) rotate(-4deg); } 70% { transform: translateY(0) scaleY(.9) scaleX(1.08); } 100% { transform: none; } }
+  .vs.slam { animation: vsslam .7s cubic-bezier(.2,1.6,.4,1) .7s both, vs 1.1s ease-in-out 1.4s infinite; }
+  @keyframes vsslam { 0% { transform: scale(6) rotate(-30deg); opacity: 0; } 100% { transform: scale(1) rotate(-4deg); opacity: 1; } }
+  .arena.punch { animation: punch .35s ease-out; }
+  @keyframes punch { 0% { transform: scale(1); } 30% { transform: scale(1.07); } 100% { transform: scale(1); } }
+  #tvTimer.pop { animation: tpop .5s cubic-bezier(.2,1.8,.4,1); }
+  @keyframes tpop { 0% { transform: scale(2.2); opacity: .2; } 100% { transform: scale(1); opacity: 1; } }
+  .boom { position: absolute; z-index: 45; font-weight: 500; font-size: 4.2vw; letter-spacing: -.02em; pointer-events: none; white-space: nowrap;
+    -webkit-text-stroke: .25vw #0f0f10; paint-order: stroke fill; animation: boom 1.05s cubic-bezier(.2,1.5,.4,1) forwards; }
+  @keyframes boom { 0% { transform: translate(-50%,-50%) scale(.2) rotate(var(--r)); opacity: 0; } 18% { transform: translate(-50%,-50%) scale(1.25) rotate(var(--r)); opacity: 1; }
+    70% { transform: translate(-50%,-60%) scale(1) rotate(var(--r)); opacity: 1; } 100% { transform: translate(-50%,-90%) scale(.9) rotate(var(--r)); opacity: 0; } }
+  #announce { position: absolute; left: 0; right: 0; top: 44%; z-index: 46; text-align: center; font-size: 3.4vw; font-weight: 500; color: #0f0f10;
+    background: var(--accent); padding: 1.6vh 0; transform: translateX(-110%) skewX(-12deg); pointer-events: none; }
+  #announce.go { animation: ann 2.4s cubic-bezier(.2,1,.3,1) forwards; }
+  @keyframes ann { 0% { transform: translateX(-110%) skewX(-12deg); } 15% { transform: translateX(0) skewX(-12deg); } 80% { transform: translateX(0) skewX(-12deg); }
+    100% { transform: translateX(110%) skewX(-12deg); } }
+  #tugv::before { content: ''; position: absolute; inset: -20%; opacity: 0; pointer-events: none; transition: opacity .4s;
+    background: repeating-linear-gradient(100deg, transparent 0 3vw, var(--speed, rgba(255,255,255,.06)) 3vw 3.4vw); }
+  #tugv.final::before { opacity: 1; animation: speed .35s linear infinite; }
+  @keyframes speed { from { transform: translateX(0); } to { transform: translateX(-3.4vw); } }
+  #rope { will-change: transform; }
+
   #winv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; background: var(--bg); overflow: hidden; }
   #winv.on { display: flex; }
   #winScore { font-size: 1.4vw; color: var(--text-2); }
@@ -144,12 +176,13 @@
 
 <div id="tugv" class="layer">
   <div id="tugFlash"></div>
+  <div id="announce"></div>
   <div class="tv-title" id="tvTitle">tug of war</div>
   <pre class="art" id="tvTimer"></pre>
   <div class="arena" id="arena">
-    <div class="fighter" id="fA"><div class="bubble" id="bA"></div><img id="iA" alt=""><div class="fname" id="tvA"></div><div class="pulls" id="tvAn"></div></div>
-    <div class="vs">VS</div>
-    <div class="fighter" id="fB"><div class="bubble" id="bB"></div><img id="iB" alt=""><div class="fname" id="tvB"></div><div class="pulls" id="tvBn"></div></div>
+    <div class="fighter" id="fA"><div class="bubble" id="bA"></div><div class="fbody" id="gA"><img id="iA" alt=""></div><div class="fname" id="tvA"></div><div class="pulls" id="tvAn"></div></div>
+    <div class="vs" id="vs">VS</div>
+    <div class="fighter" id="fB"><div class="bubble" id="bB"></div><div class="fbody" id="gB"><img id="iB" alt=""></div><div class="fname" id="tvB"></div><div class="pulls" id="tvBn"></div></div>
   </div>
   <pre class="art" id="rope"></pre>
   <div id="tvHint">tap pull on your phone, as fast as you can</div>
@@ -173,6 +206,7 @@
   <div id="blog"></div>
 </div>
 
+<canvas id="fxc"></canvas>
 <div id="conn"></div>
 
 <script src="config.js"></script>
@@ -361,7 +395,7 @@
   setInterval(() => { if (curName === 'charge' || curName === 'powered') client.send({ action: 'charge' }); }, 400);
   let tug = null, tugPos = 0;
   // ----- tug of war trash talk -----
-  const talk = { round: null, said: {}, queue: [], leader: null, next: 0, prev: {}, jit: { A: 0, B: 0 }, winFor: null, used: {} };
+  const talk = { boomAcc: { A: 0, B: 0 }, ms: 0, timerTxt: '', started: false, round: null, said: {}, queue: [], leader: null, next: 0, prev: {}, jit: { A: 0, B: 0 }, winFor: null, used: {} };
   function talkReset(effect, teams) {
     Object.assign(talk, { round: effect.startsAt, said: {}, queue: [], leader: null, next: effect.startsAt + 3500, prev: {}, jit: { A: 0, B: 0 } });
     for (const side of ['A', 'B']) {
@@ -372,6 +406,9 @@
       $('b' + side).classList.remove('pop');
     }
     $('tvTitle').textContent = 'tug of war'; $('tvTitle').classList.remove('big'); $('arena').classList.remove('shake');
+    $('tugv').classList.remove('final'); replay($('gA'), 'enterA'); replay($('gB'), 'enterB'); replay($('vs'), 'slam');
+    talk.boomAcc = { A: 0, B: 0 }; talk.ms = 0; talk.timerTxt = ''; talk.started = false;
+    document.querySelectorAll('#tugv .boom').forEach((e) => e.remove());
   }
   function say(side, kind, at) {
     const L = (S.brainrot && S.brainrot.lines && S.brainrot.lines[kind]) || {};
@@ -382,6 +419,45 @@
     talk.queue.push({ side, at, text: arr[i] }); talk.queue.sort((x, y) => x.at - y.at);
   }
   function bubble(el, text) { if (!text) return; el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+  // particles + confetti on one canvas
+  const fx = { cv: null, g: null, parts: [] };
+  function fxInit() {
+    if (fx.cv) return; fx.cv = $('fxc'); fx.g = fx.cv.getContext('2d');
+    const rs = () => { fx.cv.width = innerWidth * devicePixelRatio; fx.cv.height = innerHeight * devicePixelRatio; }; rs(); addEventListener('resize', rs);
+  }
+  function burst(x, y, color, n, kind = 'spark') {
+    fxInit();
+    for (let i = 0; i < n && fx.parts.length < 900; i++) {
+      const a = Math.random() * Math.PI * 2, v = kind === 'confetti' ? 2 + Math.random() * 6 : 4 + Math.random() * 9;
+      fx.parts.push({ x, y, vx: Math.cos(a) * v, vy: kind === 'confetti' ? Math.random() * 4 : Math.sin(a) * v - 4, life: 1,
+        decay: kind === 'confetti' ? 0.004 + Math.random() * 0.004 : 0.025 + Math.random() * 0.02, color, kind,
+        s: (kind === 'confetti' ? 8 + Math.random() * 10 : 4 + Math.random() * 6) * devicePixelRatio, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4 });
+    }
+  }
+  function fxFrame(active) {
+    if (!fx.cv) return; fx.cv.classList.toggle('on', active || fx.parts.length > 0);
+    const g = fx.g, d = devicePixelRatio; g.clearRect(0, 0, fx.cv.width, fx.cv.height);
+    for (let i = fx.parts.length - 1; i >= 0; i--) {
+      const p = fx.parts[i]; p.x += p.vx; p.y += p.vy; p.vy += p.kind === 'confetti' ? 0.25 : 0.45; p.vx *= 0.985; p.rot += p.vr; p.life -= p.decay;
+      if (p.life <= 0 || p.y > innerHeight + 40) { fx.parts.splice(i, 1); continue; }
+      g.save(); g.globalAlpha = Math.min(1, p.life * 1.5); g.fillStyle = p.color; g.translate(p.x * d, p.y * d); g.rotate(p.rot);
+      if (p.kind === 'confetti') g.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); else g.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
+      g.restore();
+    }
+  }
+  function centerOf(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height }; }
+  function boom(side, teams) {
+    const F = S.brainrot && S.brainrot[side]; const words = (F && F.sfx) || ['PULL'];
+    const c = centerOf($('g' + side)); const el = document.createElement('div'); el.className = 'boom';
+    el.textContent = words[Math.floor(Math.random() * words.length)];
+    el.style.left = (c.x + (Math.random() - 0.5) * c.w * 1.1 + (side === 'A' ? c.w * 0.35 : -c.w * 0.35)) + 'px';
+    el.style.top = (c.y + (Math.random() - 0.5) * c.h * 0.9) + 'px';
+    el.style.color = Math.random() < 0.5 ? teams[side].color : '#ffcc00'; el.style.setProperty('--r', ((Math.random() - 0.5) * 34).toFixed(0) + 'deg');
+    el.style.fontSize = (3 + Math.random() * 2.6).toFixed(1) + 'vw';
+    $('tugv').appendChild(el); setTimeout(() => el.remove(), 1100);
+  }
+  function announce(text, bg) { const el = $('announce'); el.textContent = text; el.style.background = bg || 'var(--accent)'; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
+  function replay(el, cls) { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
   function flash(color) { const el = $('tugFlash'); el.style.background = color; el.classList.remove('go'); void el.offsetWidth; el.classList.add('go'); }
   setInterval(() => { if (curName === 'tug') client.send({ action: 'tugstate' }); }, 300);
 
@@ -453,6 +529,8 @@
       else if (now < effect.endsAt) { left = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; if (left <= 5) col = 'var(--red)'; }
       else timer = 'TIME';
       art($('tvTimer'), timer, 30 * VW(), 11 * VH()); $('tvTimer').style.color = col;
+      if (timer !== talk.timerTxt) { if (now < effect.startsAt || (left <= 5 && left > 0)) replay($('tvTimer'), 'pop'); talk.timerTxt = timer; }
+      if (!talk.started && now >= effect.startsAt) { talk.started = true; announce('PULL PULL PULL'); flash('#ffffff'); }
       const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
       tugPos += (goal - tugPos) * 0.15;
       const W = 61, mid = (W - 1) / 2, k = Math.round(mid + tugPos * mid);
@@ -469,6 +547,22 @@
         const j = talk.jit[side], jx = (Math.random() - 0.5) * j, jy = (Math.random() - 0.5) * j * 0.6;
         const sca = 1 + 0.28 * lead, rot = sign * (running ? 7 + 4 * Math.sin(now / 90) : 0);
         $('f' + side).style.transform = `translate(${jx}px, ${jy}px) scale(${sca.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`;
+        if (running && got > 0) {
+          const c = centerOf($('g' + side));
+          burst(c.x + (side === 'A' ? c.w * 0.4 : -c.w * 0.4), c.y, teams[side].color, Math.min(8, 1 + Math.floor(got / 3)));
+          talk.boomAcc[side] += got;
+          const per = Math.max(25, ((effect.sizeA || 1) + (effect.sizeB || 1)) * 0.5);
+          if (talk.boomAcc[side] >= per) { talk.boomAcc[side] = 0; boom(side, teams); }
+        }
+      }
+      const shakeRope = Math.min(10, (talk.jit.A + talk.jit.B) * 0.5);
+      $('rope').style.transform = `translateY(${((Math.random() - 0.5) * shakeRope).toFixed(1)}px)`;
+      const MS = (S.brainrot && S.brainrot.milestones) || [];
+      const total = sc.a + sc.b;
+      if (talk.ms < MS.length && total >= MS[talk.ms]) {
+        const T = (S.brainrot && S.brainrot.milestoneText) || ['{n} PULLS'];
+        announce(T[talk.ms % T.length].replace('{n}', fmt(MS[talk.ms]))); talk.ms++;
+        while (talk.ms < MS.length && total >= MS[talk.ms]) talk.ms++;
       }
       // who says what, and when
       const leader = sc.a > sc.b ? 'A' : sc.b > sc.a ? 'B' : null;
@@ -478,8 +572,10 @@
         if (left <= 5 && !talk.said.final) {
           talk.said.final = 1; say('A', 'final', now); say('B', 'final', now + 700);
           $('tvTitle').textContent = 'final 5 seconds'; $('tvTitle').classList.add('big'); $('arena').classList.add('shake');
+          $('tugv').classList.add('final'); $('tugv').style.setProperty('--speed', (leader ? teams[leader].color : '#ffffff') + '22'); announce('FINAL 5 SECONDS', '#ff1744');
         } else if (left > 5 && leader && leader !== talk.leader && now > effect.startsAt + 900) {
-          talk.leader = leader; flash(teams[leader].color);
+          talk.leader = leader; flash(teams[leader].color); replay($('g' + leader), 'hop'); replay($('arena'), 'punch');
+          { const c = centerOf($('g' + leader)); burst(c.x, c.y, teams[leader].color, 40); burst(c.x, c.y, '#ffcc00', 20); }
           say(leader, 'lead', now); say(leader === 'A' ? 'B' : 'A', 'behind', now + 1600);
           $('tvTitle').textContent = `${(teams[leader].short || teams[leader].name).toLowerCase()} takes the lead`; $('tvTitle').classList.add('big');
           clearTimeout(talk.tt); talk.tt = setTimeout(() => { if (!talk.said.final) $('tvTitle').classList.remove('big'); }, 1800);
@@ -513,14 +609,19 @@
           void fig.offsetWidth; if (n === 1 || draw) fig.classList.add('slam');
         }
         const pick = (arr) => (arr && arr.length ? arr[Math.floor(Math.random() * arr.length)] : '');
+        talk.confettiUntil = performance.now() + 4200; talk.confettiCols = draw ? ['#ffffff', '#ff9900'] : [teams[W].color, '#ffcc00', '#ffffff'];
         if (draw) { setTimeout(() => bubble($('wB1'), pick(F.draw)), 600); setTimeout(() => bubble($('wB2'), pick(F.draw)), 1400); }
         else { setTimeout(() => bubble($('wB1'), pick(F.win && F.win[W])), 700); setTimeout(() => bubble($('wB2'), pick(F.lose && F.lose[L])), 1900); }
+      }
+      if (performance.now() < (talk.confettiUntil || 0) && Math.random() < 0.6) {
+        const cols = talk.confettiCols; burst(Math.random() * innerWidth, -20, cols[Math.floor(Math.random() * cols.length)], 6, 'confetti');
       }
       const winName = draw ? 'DRAW' : (teams[W].short || teams[W].name) + ' WINS';
       art($('winArt'), winName, 80 * VW(), 16 * VH());
       $('winArt').style.color = t < 400 ? '#ffffff' : draw ? 'var(--text)' : teams[W].color;
       $('winScore').textContent = `${teams.A.name.toLowerCase()} ${fmt(effect.scoreA)}  ·  ${fmt(effect.scoreB)} ${teams.B.name.toLowerCase()}`;
     }
+    fxFrame(tugOn || winOn);
     if (teaserOn) {
       label = ''; f = { bg: 'var(--bg-deep)' };
       const T = S.tugTeaser || {};

@@ -66,7 +66,14 @@
   #tugAvatar { width: 34vw; max-width: 150px; aspect-ratio: 1; object-fit: cover; border-radius: 14px; border: 3px solid; display: none; background: #1d1d20;
     transition: transform .08s var(--ease); }
   #tugAvatar.png { object-fit: contain; border-color: transparent !important; background: transparent; }
-  #tugAvatar.hit { transform: scale(1.12) rotate(-6deg); }
+  #tugAvatar.hit { transform: scale(1.14) rotate(-7deg); }
+  .hitword { position: fixed; z-index: 30; pointer-events: none; font: 500 30px var(--mono); white-space: nowrap; -webkit-text-stroke: 2px #0f0f10; paint-order: stroke fill;
+    animation: hitword .75s cubic-bezier(.2,1.5,.4,1) forwards; }
+  @keyframes hitword { 0% { transform: translate(-50%,-50%) scale(.3) rotate(var(--r)); opacity: 0; } 20% { transform: translate(-50%,-50%) scale(1.2) rotate(var(--r)); opacity: 1; }
+    100% { transform: translate(-50%,-160%) scale(.9) rotate(var(--r)); opacity: 0; } }
+  #tugLead { font-size: 15px; font-weight: 500; min-height: 20px; }
+  #tugLead.win { color: var(--good); } #tugLead.lose { color: var(--red); animation: blinkL .5s steps(2) infinite; }
+  @keyframes blinkL { 50% { opacity: .45; } }
   #tugPlay.with-avatar { gap: 14px !important; }
   #tugPlay.with-avatar .press { width: 56vw; height: 56vw; max-width: 240px; max-height: 240px; }
   #quiz { justify-content: flex-start; padding-top: calc(28px + env(safe-area-inset-top)); overflow-y: auto; gap: 18px; text-align: left; align-items: stretch; }
@@ -130,6 +137,7 @@
     <div class="ov-title" id="tugName"></div>
     <button class="press" id="pullBtn"><pre class="art" id="pullArt"></pre></button>
     <div id="rope"></div>
+    <div id="tugLead"></div>
     <div id="tugInfo"></div>
   </div>
 </div>
@@ -288,8 +296,24 @@
     if (now < tugFx.startsAt || now >= tugFx.endsAt) return;
     tugPending++;
     me.tugPulls = (me.tugPulls || 0) + 1;
-    hit($('pullBtn')); $('tugAvatar').classList.add('hit'); setTimeout(() => $('tugAvatar').classList.remove('hit'), 90);
+    hit($('pullBtn')); hitWord(e);
+    $('tugAvatar').classList.add('hit'); setTimeout(() => $('tugAvatar').classList.remove('hit'), 90);
   });
+  const fmt = (n) => Number(n || 0).toLocaleString('en-IN');
+  let lastWord = 0;
+  function hitWord(e) {
+    const now = performance.now(); if (now - lastWord < 110) return; lastWord = now;
+    const teams = Effects.tugTeams(tugFx), F = S.brainrot && S.brainrot[me.tugTeam];
+    const words = (F && F.sfx) || ['PULL', '+1'];
+    const el = document.createElement('div'); el.className = 'hitword';
+    el.textContent = Math.random() < 0.35 ? '+1' : words[Math.floor(Math.random() * words.length)];
+    const r = $('pullBtn').getBoundingClientRect();
+    el.style.left = (e.clientX || r.left + r.width / 2) + (Math.random() - 0.5) * 80 + 'px';
+    el.style.top = (e.clientY || r.top + r.height / 2) - 20 + 'px';
+    el.style.color = Math.random() < 0.5 ? teams[me.tugTeam].color : '#ffcc00';
+    el.style.setProperty('--r', ((Math.random() - 0.5) * 30).toFixed(0) + 'deg');
+    document.body.appendChild(el); setTimeout(() => el.remove(), 800);
+  }
   $('pickA').onclick = () => { me.tugPick = 'A'; };
   $('pickB').onclick = () => { me.tugPick = 'B'; };
   const mmss = (ms) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -335,6 +359,15 @@
       $('pullBtn').classList.add('wait');
       $('tugInfo').textContent = 'waiting for the result';
     }
+    // winning or losing?
+    const lead = $('tugLead');
+    if (tugState && now >= effect.startsAt && now < effect.endsAt) {
+      const mine = team === 'A' ? tugState.a : tugState.b, theirs = team === 'A' ? tugState.b : tugState.a;
+      const other = teams[team === 'A' ? 'B' : 'A'], otherName = (other.short || other.name);
+      const txt = mine > theirs ? `winning by ${fmt(mine - theirs)}` : mine < theirs ? `${otherName.toLowerCase()} leads by ${fmt(theirs - mine)}. PULL` : 'dead level';
+      if (lead.textContent !== txt) lead.textContent = txt;
+      lead.className = mine > theirs ? 'win' : mine < theirs ? 'lose' : '';
+    } else { lead.textContent = ''; lead.className = ''; }
     // the rope, in characters
     const W = 21;
     const pos = tugState ? Math.max(-1, Math.min(1, (tugState.b - tugState.a) / tugState.goal)) : 0;
