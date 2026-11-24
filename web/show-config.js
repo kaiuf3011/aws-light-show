@@ -1,6 +1,6 @@
 // ✏️ EDIT THIS FILE to customise the show (departments, colours, club link).
 window.SHOW = {
-  title: '300 phones, one button',
+  title: 'All phones in this room, one button',
   // What the big display is called on phones during Power-Up ('SCREEN', 'TV' or 'PROJECTOR')
   screenWord: 'SCREEN',
   club: 'AWS Cloud Club · RGU',

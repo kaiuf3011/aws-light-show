@@ -10,7 +10,7 @@ const C = {
 const TEMPLATE_LINES = typeof __TEMPLATE_LINES__ !== 'undefined' ? __TEMPLATE_LINES__ : 200;
 const LIVE_STEP = 9;
 const STEPS = [
-  { kicker: 'aws cloud club · rgu', h: '300 phones, one button', p: 'What actually happened when you tapped. Five pieces, zero servers to manage.', cam: [-2, 11.5, 20], at: [-2, 0.4, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
+  { kicker: 'aws cloud club · rgu', h: 'All phones in this room, one button', p: 'What actually happened when you tapped. Five pieces, zero servers to manage.', cam: [-2, 11.5, 20], at: [-2, 0.4, 0], labels: ['phones', 's3', 'gw', 'lambda', 'db'] },
   { kicker: '01 · the menu', h: 'Your phone opened a page from S3', p: 'Amazon S3 stores the website as plain files. Scanning the QR code just downloads them, nothing is running.', cam: [-15.5, 7.5, 9.5], at: [-11.2, 0.6, 0.6], labels: ['phones', 's3'] },
   { kicker: '02 · the waiter', h: 'Every phone keeps a line open', p: 'API Gateway holds one WebSocket per phone, so AWS can send you something at any moment without you asking.', cam: [-8, 8, 12.5], at: [-5.8, 1.1, 0.4], labels: ['phones', 'gw'] },
   { kicker: '03 · the chef', h: 'Each message wakes my code', p: 'AWS Lambda runs my code only when a message arrives, for a few milliseconds. No message: nothing running, nothing to pay.', cam: [0.2, 6, 10], at: [0.2, 1.7, 0], labels: ['gw', 'lambda'] },
@@ -366,7 +366,7 @@ function liveText() {   // labels carry real numbers whenever the backend is con
   setSub('phones', `${fmt(LIVE.phones)} connected right now`);
   if (LIVE.calls != null) setSub('lambda', `${fmt(LIVE.calls)} runs · ${LIVE.rate.toFixed(1)}/s`);
   if (step !== 4 && step !== 7) setSub('db', `the fridge · ${fmt(LIVE.phones)} phone rows`);
-  if (step === 0 && LIVE.phones >= 10) setHeadline(`${fmt(LIVE.phones)} phones, one button`);
+
 }
 
 // headline types itself in, like a terminal
