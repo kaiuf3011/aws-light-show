@@ -303,6 +303,7 @@
   const RAMP = ' .:-=+*#%@', NOISE = '.:-=+*#';
   function preparePoster(img) {
     pImg = img;
+    pCols = img.width > img.height ? 48 : 30;   // landscape posters get more, smaller tiles
     pRows = Math.round(pCols * img.height / img.width);
     const c = document.createElement('canvas'); c.width = pCols; c.height = pRows;
     const x = c.getContext('2d', { willReadFrequently: true });
@@ -321,7 +322,7 @@
   function drawPoster(level, now, flash) {
     const cv = $('posterCanvas');
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const H = Math.floor(84 * VH()), W = Math.floor(H * pImg.width / pImg.height);
+    const H = Math.floor(Math.min(84 * VH(), 94 * VW() * pImg.height / pImg.width)), W = Math.floor(H * pImg.width / pImg.height);
     if (cv.width !== W * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
     const ctx = cv.getContext('2d');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
