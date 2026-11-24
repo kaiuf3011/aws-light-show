@@ -10,9 +10,9 @@ window.SHOW = {
   // Tug of war fighters. Team A is the left side of the TV, team B the right.
   // Lines are picked at random; edit them freely. Images live in web/brainrot/.
   brainrot: {
-    A: { name: 'SHERU BHAI', img: 'brainrot/sheru.jpg', color: '#ff1744',
+    A: { name: 'SHERU BHAI', img: 'brainrot/sheru-full.png', color: '#ff1744',
          sfx: ['DHOOL', 'MASS', 'THERI', 'SEMMA', 'BHAI', 'KETHU', 'GETHU'] },
-    B: { name: 'TUNG TUNG TUNG SAHUR', short: 'TUNG TUNG', img: 'brainrot/tung.png', color: '#2979ff',
+    B: { name: 'TUNG TUNG TUNG SAHUR', short: 'TUNG TUNG', img: 'brainrot/tung-full.png', color: '#2979ff',
          sfx: ['TUNG', 'TUNG TUNG', 'SAHUR', 'DHUP', 'AIYO', 'TUNG TUNG TUNG', 'BONK'] },
     // Words on the screens. {name} = a fighter, {n} = a number.
     ui: {

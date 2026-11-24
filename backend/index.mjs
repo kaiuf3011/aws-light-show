@@ -420,7 +420,7 @@ async function handleMessage(ctx, id, msg) {
         effect.a = 'RED';
         effect.b = 'BLUE';
         effect.seconds = effect.seconds || 45;
-        effect.goal = Math.max(5, phones) * 8;
+        effect.goal = Math.max(5, phones) * 35;   // pull gap for a knock-out win; also how far the rope moves
         effect.startsAt = at + TUG_COUNTDOWN_MS;
         effect.endsAt = effect.startsAt + effect.seconds * 1000;
         await db.send(new PutItemCommand({

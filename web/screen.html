@@ -47,14 +47,14 @@
 
   #tugv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 2.6vh; background: var(--bg); overflow: hidden; }
   #tugv.on { display: flex; }
-  .tv-title { font-size: 1.2vw; color: var(--muted); }
+  .tv-title { font-size: 1.2vw; color: var(--text-2); }
   #tvTitle.big { font-size: 2.6vw; font-weight: 500; color: #fff; animation: blink .35s steps(2) infinite; }
   @keyframes blink { 50% { opacity: .35; } }
   #tugFlash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
   #tugFlash.go { animation: flash .7s ease-out; }
   @keyframes flash { 0% { opacity: .55; } 100% { opacity: 0; } }
-  .arena { display: flex; align-items: flex-end; justify-content: space-between; width: 82vw; height: 50vh; }
-  .arena.shake { animation: shake .12s linear infinite; }
+  .arena { display: flex; align-items: flex-end; justify-content: space-between; width: 84vw; height: 48vh; }
+  .arena.shake .vs { animation: shake .12s linear infinite; }
   @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,3px); } 50% { transform: translate(5px,-4px); } 75% { transform: translate(-3px,-2px); } }
   .fighter { position: relative; width: 30vw; display: flex; flex-direction: column; align-items: center; will-change: transform; transform-origin: 50% 100%; }
   .fighter img { width: 21vw; height: 21vw; object-fit: cover; display: block; border: .35vw solid; border-radius: 1.2vw; background: #1d1d20; }
@@ -72,8 +72,8 @@
   .bubble.pop { animation: pop 2.9s cubic-bezier(.2,1.6,.4,1) forwards; }
   @keyframes pop { 0% { opacity: 0; transform: scale(.2) rotate(-8deg); } 8% { opacity: 1; transform: scale(1.12) rotate(3deg); }
     14% { transform: scale(1) rotate(0); } 88% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(-1vh); } }
-  #rope { font-size: 2vw; line-height: 1.25; }
-  #tvHint { font-size: 1.15vw; color: var(--muted); }
+  #rope { font-size: 1.5vw; line-height: 1.2; }
+  #tvHint { font-size: 1.15vw; color: var(--text-2); }
   #tvTimer .art, #tvTimer { line-height: 1; }
 
 
@@ -107,6 +107,38 @@
   #tugv.final::before { opacity: 1; animation: speed .35s linear infinite; }
   @keyframes speed { from { transform: translateX(0); } to { transform: translateX(-3.4vw); } }
   #rope { will-change: transform; }
+
+
+  /* ---- comic arena: red vs blue, lightning split, speed rays, halftone ---- */
+  .cz { position: absolute; inset: 0; pointer-events: none; }
+  .cz-base { background: #1fa6e0; }
+  .cz-edge { background: #0f0f10; clip-path: polygon(0 0, 57.2% 0, 44.2% 38%, 57.2% 38%, 40.2% 100%, 0 100%); }
+  .cz-red { background: #e8222a; clip-path: polygon(0 0, 56% 0, 43% 38%, 56% 38%, 39% 100%, 0 100%); }
+  .cz-fx { background:
+      repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.11) 0 3deg, transparent 3deg 9deg),
+      radial-gradient(rgba(15,15,16,.18) 26%, transparent 28%) 0 0 / 12px 12px; }
+  #tugv > :not(.cz):not(#tugFlash):not(#announce):not(.boom), #winv > :not(.cz) { position: relative; z-index: 1; }
+  #iA { height: 39vh !important; }
+  .fighter .bubble { z-index: 50; }
+  #tugv { gap: 1.8vh !important; }
+  #tugv, #winv { background: #1fa6e0 !important; }
+  .pill { background: rgba(15,15,16,.86); padding: .5vh 1.2vw; border-radius: .8vw; }
+  #tvTimer.pill { padding: 1vh 1.6vw; }
+  #rope.pill { padding: .4vh 1.4vw; }
+  .fname { background: #0f0f10; padding: .4vh 1vw; border-radius: .6vw; }
+  .fighter .pulls { background: rgba(15,15,16,.8); padding: .2vh .8vw; border-radius: .5vw; color: #ededed !important; }
+  .fmove { will-change: transform; transform-origin: 50% 100%; }
+  .fighter.png img { width: auto; height: 36vh; border: 0 !important; border-radius: 0; background: transparent; filter: drop-shadow(.45vw .45vw 0 rgba(15,15,16,.9)); }
+  .winRow .fighter.png img { width: auto; height: 52vh; }
+  .winRow .fighter.loser.png img { width: auto; height: 24vh; }
+  /* comic speech bubbles: beside the head, pointing at it, never shaking */
+  .fighter .bubble { top: 1vh; bottom: auto; max-width: 21vw; font-size: 1.75vw; border: .22vw solid #0f0f10; box-shadow: .4vw .4vw 0 #0f0f10; border-radius: 1.4vw; }
+  #bA, #wB1 { left: 62%; right: auto; } #bB, #wB2 { right: 62%; left: auto; }
+  .fighter .bubble::after { content: ''; position: absolute; top: 1.6vh; width: 1.5vw; height: 1.5vw; background: #fff; border: 0; margin: 0; transform: rotate(45deg); }
+  #bA::after, #wB1::after { left: -.95vw; border-left: .22vw solid #0f0f10; border-bottom: .22vw solid #0f0f10; }
+  #bB::after, #wB2::after { left: auto; right: -.95vw; border-right: .22vw solid #0f0f10; border-top: .22vw solid #0f0f10; }
+  .vsburst { width: 13vw; height: 13vw; display: block; filter: drop-shadow(.4vw .4vw 0 rgba(15,15,16,.9)); }
+  .vs { font-size: 0; }
 
   #winv { display: none; flex-direction: column; align-items: center; justify-content: center; gap: 3vh; background: var(--bg); overflow: hidden; }
   #winv.on { display: flex; }
@@ -175,25 +207,27 @@
 <div id="power"></div>
 
 <div id="tugv" class="layer">
+  <div class="cz cz-base"></div><div class="cz cz-edge"></div><div class="cz cz-red"></div><div class="cz cz-fx"></div>
   <div id="tugFlash"></div>
   <div id="announce"></div>
-  <div class="tv-title" id="tvTitle">tug of war</div>
-  <pre class="art" id="tvTimer"></pre>
+  <div class="tv-title pill" id="tvTitle">tug of war</div>
+  <pre class="art pill" id="tvTimer"></pre>
   <div class="arena" id="arena">
-    <div class="fighter" id="fA"><div class="bubble" id="bA"></div><div class="fbody" id="gA"><img id="iA" alt=""></div><div class="fname" id="tvA"></div><div class="pulls" id="tvAn"></div></div>
-    <div class="vs" id="vs">VS</div>
-    <div class="fighter" id="fB"><div class="bubble" id="bB"></div><div class="fbody" id="gB"><img id="iB" alt=""></div><div class="fname" id="tvB"></div><div class="pulls" id="tvBn"></div></div>
+    <div class="fighter" id="fA"><div class="bubble" id="bA"></div><div class="fmove" id="mA"><div class="fbody" id="gA"><img id="iA" alt=""></div></div><div class="fname" id="tvA"></div><div class="pulls" id="tvAn"></div></div>
+    <div class="vs" id="vs"><svg class="vsburst" viewBox="0 0 200 200" aria-label="VS"><polygon points="100,6 118,58 168,28 146,80 196,92 150,116 184,160 130,148 118,196 96,154 64,192 62,140 10,150 46,108 4,78 58,72 38,22 86,52" fill="#fff" stroke="#0f0f10" stroke-width="6" stroke-linejoin="round"/><text x="100" y="122" text-anchor="middle" font-size="64" font-weight="700" fill="#0f0f10" font-family="JetBrains Mono, monospace">VS</text></svg></div>
+    <div class="fighter" id="fB"><div class="bubble" id="bB"></div><div class="fmove" id="mB"><div class="fbody" id="gB"><img id="iB" alt=""></div></div><div class="fname" id="tvB"></div><div class="pulls" id="tvBn"></div></div>
   </div>
-  <pre class="art" id="rope"></pre>
-  <div id="tvHint">tap pull on your phone, as fast as you can</div>
+  <pre class="art pill" id="rope"></pre>
+  <div class="pill" id="tvHint">tap pull on your phone, as fast as you can</div>
 </div>
 
 <div id="winv" class="layer">
+  <div class="cz cz-base"></div><div class="cz cz-edge"></div><div class="cz cz-red"></div><div class="cz cz-fx"></div>
   <div class="winRow">
     <div class="fighter" id="wF1"><div class="bubble" id="wB1"></div><img id="wI1" alt=""></div>
     <div class="fighter" id="wF2"><div class="bubble" id="wB2"></div><img id="wI2" alt=""></div>
   </div>
-  <pre class="art" id="winArt"></pre><div id="winScore"></div>
+  <pre class="art pill" id="winArt"></pre><div class="pill" id="winScore"></div>
 </div>
 
 <div id="teaser" class="layer">
@@ -451,8 +485,8 @@
     const c = centerOf($('g' + side)); const el = document.createElement('div'); el.className = 'boom';
     el.textContent = words[Math.floor(Math.random() * words.length)];
     el.style.left = (c.x + (Math.random() - 0.5) * c.w * 1.1 + (side === 'A' ? c.w * 0.35 : -c.w * 0.35)) + 'px';
-    el.style.top = (c.y + (Math.random() - 0.5) * c.h * 0.9) + 'px';
-    el.style.color = Math.random() < 0.5 ? teams[side].color : '#ffcc00'; el.style.setProperty('--r', ((Math.random() - 0.5) * 34).toFixed(0) + 'deg');
+    el.style.top = (c.y + c.h * (0.05 + Math.random() * 0.4)) + 'px';
+    el.style.color = Math.random() < 0.6 ? '#ffd400' : '#ffffff'; el.style.setProperty('--r', ((Math.random() - 0.5) * 34).toFixed(0) + 'deg');
     el.style.fontSize = (3 + Math.random() * 2.6).toFixed(1) + 'vw';
     $('tugv').appendChild(el); setTimeout(() => el.remove(), 1100);
   }
@@ -529,7 +563,7 @@
       if (now < effect.startsAt) { timer = String(Math.ceil((effect.startsAt - now) / 1000)); col = 'var(--accent)'; }
       else if (now < effect.endsAt) { left = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; if (left <= 5) col = 'var(--red)'; }
       else timer = 'TIME';
-      art($('tvTimer'), timer, 30 * VW(), 11 * VH()); $('tvTimer').style.color = col;
+      art($('tvTimer'), timer, 26 * VW(), 9 * VH()); $('tvTimer').style.color = col;
       if (timer !== talk.timerTxt) { if (now < effect.startsAt || (left <= 5 && left > 0)) replay($('tvTimer'), 'pop'); talk.timerTxt = timer; }
       if (!talk.started && now >= effect.startsAt) { talk.started = true; announce(UI().go || 'PULL PULL PULL'); flash('#ffffff'); }
       const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
@@ -544,10 +578,10 @@
       for (const [side, sign, score] of [['A', -1, sc.a], ['B', 1, sc.b]]) {
         const lead = side === 'A' ? -tugPos : tugPos;
         const got = score - (talk.prev[side] || 0); talk.prev[side] = score;
-        talk.jit[side] = Math.min(14, talk.jit[side] * 0.85 + (running ? got * 0.6 : 0));
+        talk.jit[side] = Math.min(4, talk.jit[side] * 0.85 + (running ? got * 0.2 : 0));
         const j = talk.jit[side], jx = (Math.random() - 0.5) * j, jy = (Math.random() - 0.5) * j * 0.6;
-        const sca = 1 + 0.28 * lead, rot = sign * (running ? 7 + 4 * Math.sin(now / 90) : 0);
-        $('f' + side).style.transform = `translate(${jx}px, ${jy}px) scale(${sca.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`;
+        const sca = 1 + 0.16 * lead, rot = sign * (running ? 2.5 + 1.2 * Math.sin(now / 160) : 0);
+        $('m' + side).style.transform = `translate(${jx}px, ${jy}px) scale(${sca.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`;
         if (running && got > 0) {
           const c = centerOf($('g' + side));
           burst(c.x + (side === 'A' ? c.w * 0.4 : -c.w * 0.4), c.y, teams[side].color, Math.min(8, 1 + Math.floor(got / 3)));

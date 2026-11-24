@@ -125,7 +125,7 @@ wss.on('connection', (ws) => {
         effect.sizeA = Math.ceil(phones / 2); effect.sizeB = Math.floor(phones / 2);
         effect.mode = 'random'; effect.a = 'RED'; effect.b = 'BLUE';
         effect.seconds = effect.seconds || 45;
-        effect.goal = Math.max(5, phones) * 8;
+        effect.goal = Math.max(5, phones) * 35;
         effect.startsAt = Date.now() + 1200 + 3000;
         effect.endsAt = effect.startsAt + effect.seconds * 1000;
         tug = { a: 0, b: 0, goal: effect.goal, startsAt: effect.startsAt, endsAt: effect.endsAt, mode: effect.mode,
