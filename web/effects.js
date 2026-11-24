@@ -181,7 +181,7 @@
       case 'tugwin': {
         const teams = tugTeams(effect);
         const mine = me.tugTeam;
-        const total = (effect.scoreA || 0) + (effect.scoreB || 0);
+        const total = effect.pulls || (effect.scoreA || 0) + (effect.scoreB || 0);
         const fill = (txt) => String(txt || '')
           .replace('{total}', total.toLocaleString('en-IN')).replace('{phones}', effect.phones || 'all these')
           .replace('{seconds}', effect.seconds || '').replace('{mine}', me.tugPulls || 0);

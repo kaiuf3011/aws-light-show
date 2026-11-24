@@ -69,9 +69,9 @@
   #bA, #wB1 { left: 0; } #bB, #wB2 { right: 0; }
   #bA::after, #wB1::after { left: 22%; } #bB::after, #wB2::after { left: 78%; }
   .fighter .bubble { width: max-content; max-width: 26vw; }
-  .bubble.pop { animation: pop 2.9s cubic-bezier(.2,1.6,.4,1) forwards; }
-  @keyframes pop { 0% { opacity: 0; transform: scale(.2) rotate(-8deg); } 8% { opacity: 1; transform: scale(1.12) rotate(3deg); }
-    14% { transform: scale(1) rotate(0); } 88% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(-1vh); } }
+  .bubble.pop { animation: pop 5.2s cubic-bezier(.2,1.6,.4,1) forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.2) rotate(-8deg); } 5% { opacity: 1; transform: scale(1.12) rotate(3deg); }
+    9% { transform: scale(1) rotate(0); } 93% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(-1vh); } }
   #rope { font-size: 1.3vw; line-height: 1.1; }
   #tvHint { font-size: 1.15vw; color: var(--text-2); }
   #tvTimer .art, #tvTimer { line-height: 1; }
@@ -441,7 +441,7 @@
     }
     $('tvTitle').textContent = 'tug of war'; $('tvTitle').classList.remove('big'); if (UI().hint) $('tvHint').textContent = UI().hint; $('arena').classList.remove('shake');
     $('tugv').classList.remove('final'); replay($('gA'), 'enterA'); replay($('gB'), 'enterB'); replay($('vs'), 'slam');
-    talk.boomAcc = { A: 0, B: 0 }; talk.ms = 0; talk.timerTxt = ''; talk.started = false;
+    talk.boomAcc = { A: 0, B: 0 }; talk.shown = {}; talk.ms = 0; talk.timerTxt = ''; talk.started = false;
     document.querySelectorAll('#tugv .boom').forEach((e) => e.remove());
   }
   function say(side, kind, at) {
@@ -450,7 +450,8 @@
     const key = kind + side, used = talk.used[key] || [];
     let pool = arr.map((_, i) => i).filter((i) => !used.includes(i)); if (!pool.length) { pool = arr.map((_, i) => i); talk.used[key] = []; }
     const i = pool[Math.floor(Math.random() * pool.length)]; (talk.used[key] = talk.used[key] || []).push(i);
-    talk.queue.push({ side, at, text: arr[i] }); talk.queue.sort((x, y) => x.at - y.at);
+    if (kind !== 'final' && talk.queue.filter((q) => q.side === side).length >= 2) return;   // don't pile up lines
+    talk.queue.push({ side, at, kind, text: arr[i] }); talk.queue.sort((x, y) => x.at - y.at);
   }
   function bubble(el, text) { if (!text) return; el.textContent = text; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
   // particles + confetti on one canvas
@@ -611,17 +612,21 @@
         } else if (left > 5 && leader && leader !== talk.leader && now > effect.startsAt + 900) {
           talk.leader = leader; flash(teams[leader].color); replay($('g' + leader), 'hop'); replay($('arena'), 'punch');
           { const c = centerOf($('g' + leader)); burst(c.x, c.y, teams[leader].color, 40); burst(c.x, c.y, '#ffcc00', 20); }
-          say(leader, 'lead', now); say(leader === 'A' ? 'B' : 'A', 'behind', now + 1600);
+          say(leader, 'lead', now); say(leader === 'A' ? 'B' : 'A', 'behind', now + 2600);
           $('tvTitle').textContent = (UI().lead || '{name} takes the lead').replace('{name}', (teams[leader].short || teams[leader].name).toLowerCase()); $('tvTitle').classList.add('big');
           clearTimeout(talk.tt); talk.tt = setTimeout(() => { if (!talk.said.final) $('tvTitle').classList.remove('big'); }, 1800);
-          talk.next = now + 4200;
+          talk.next = now + 6500;
         } else if (left > 5 && now >= talk.next) {
           const who = leader || (Math.random() < 0.5 ? 'A' : 'B');
-          say(who, leader ? 'lead' : 'start', now); say(who === 'A' ? 'B' : 'A', leader ? 'behind' : 'start', now + 1600);
-          talk.next = now + 4400;
+          say(who, leader ? 'lead' : 'start', now); say(who === 'A' ? 'B' : 'A', leader ? 'behind' : 'start', now + 2600);
+          talk.next = now + 7000;
         }
       }
-      while (talk.queue.length && talk.queue[0].at <= now) { const q = talk.queue.shift(); bubble($('b' + q.side), q.text); }
+      while (talk.queue.length && talk.queue[0].at <= now) {
+        const q = talk.queue.shift(), last = talk.shown[q.side] || 0;
+        if (q.kind !== 'final' && now - last < 4500) { q.at = last + 4500; talk.queue.push(q); talk.queue.sort((x, y) => x.at - y.at); continue; }
+        bubble($('b' + q.side), q.text); talk.shown[q.side] = now;
+      }
     } else tugPos = 0;
 
     // result, then the terminal readout with the curiosity hook
@@ -660,7 +665,7 @@
     if (teaserOn) {
       label = ''; f = { bg: 'var(--bg-deep)' };
       const T = S.tugTeaser || {};
-      const total = (effect.scoreA || 0) + (effect.scoreB || 0);
+      const total = effect.pulls || (effect.scoreA || 0) + (effect.scoreB || 0);
       const fill = (x) => String(x || '').replace('{total}', fmt(total)).replace('{phones}', effect.phones || 'all these').replace('{seconds}', effect.seconds || '');
       const tt = t - 5000;
       const cmd = 'light-show stats --last-round';

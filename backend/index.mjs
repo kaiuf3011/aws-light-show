@@ -179,12 +179,23 @@ function quizView(item) {
   };
 }
 
+// Fair teams: with an odd number of phones one side has one phone less, so its pulls are scaled up
+// (e.g. 41 vs 40 phones: each blue pull counts 41/40). Weights are read once every 2 s per container.
+let tugW = { at: 0, wa: 1, wb: 1 };
+async function tugWeights() {
+  if (Date.now() - tugW.at < 2000) return tugW;
+  const r = await db.send(new GetItemCommand({ TableName: TABLE, Key: { connectionId: { S: TUG } } }));
+  const sa = Number(r.Item?.sizeA?.N || 0), sb = Number(r.Item?.sizeB?.N || 0), big = Math.max(sa, sb, 1);
+  tugW = { at: Date.now(), wa: sa ? big / sa : 1, wb: sb ? big / sb : 1 };
+  return tugW;
+}
+
 function tugView(item) {
   const n = (k) => Number(item?.[k]?.N || 0);
   const s = (k) => item?.[k]?.S || '';
   return {
     type: 'tug',
-    a: n('a'), b: n('b'), goal: Math.max(1, n('goal')),
+    a: n('a'), b: n('b'), pulls: n('pulls'), goal: Math.max(1, n('goal')),
     startsAt: n('startsAt'), endsAt: n('endsAt'),
     mode: s('mode'), teamA: s('teamA'), teamB: s('teamB'), phones: n('phones'),
     active: !!item?.active?.BOOL, done: !!item?.done?.BOOL, winner: s('winner'),
@@ -211,7 +222,7 @@ async function finishTug(ctx, view) {
   log(`tug of war finished → ${winner === 'draw' ? 'draw' : (winner === 'A' ? 'RED' : 'BLUE') + ' wins'} (${view.a} vs ${view.b})`);
   await broadcast(ctx, {
     name: 'tugwin', winner, mode: view.mode, a: view.teamA, b: view.teamB,
-    scoreA: view.a, scoreB: view.b, phones: view.phones,
+    scoreA: view.a, scoreB: view.b, pulls: view.pulls || view.a + view.b, phones: view.phones,
     seconds: Math.max(1, Math.round((Math.min(Date.now(), view.endsAt) - view.startsAt) / 1000)),
   }, Date.now() + 600);
 }
@@ -288,16 +299,19 @@ async function handleMessage(ctx, id, msg) {
       // A phone's batched pulls for team A or B. Only counted while the round is running.
       const team = msg.team === 'B' ? 'b' : 'a';
       const n = Math.floor(clamp(msg.n, 1, 40, 1));
+      const w = await tugWeights();
+      const x = n * (team === 'a' ? w.wa : w.wb);
+      const add = Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0);   // whole numbers, fair on average
       const now = Date.now();
       let item;
       try {
         const r = await db.send(new UpdateItemCommand({
           TableName: TABLE,
           Key: { connectionId: { S: TUG } },
-          UpdateExpression: 'ADD #team :n',
+          UpdateExpression: 'ADD #team :add, #pulls :n',
           ConditionExpression: '#active = :t AND #startsAt <= :now AND #endsAt > :now',
-          ExpressionAttributeNames: { '#team': team, '#active': 'active', '#startsAt': 'startsAt', '#endsAt': 'endsAt' },
-          ExpressionAttributeValues: { ':n': { N: String(n) }, ':t': { BOOL: true }, ':now': { N: String(now) } },
+          ExpressionAttributeNames: { '#team': team, '#pulls': 'pulls', '#active': 'active', '#startsAt': 'startsAt', '#endsAt': 'endsAt' },
+          ExpressionAttributeValues: { ':add': { N: String(add) }, ':n': { N: String(n) }, ':t': { BOOL: true }, ':now': { N: String(now) } },
           ReturnValues: 'ALL_NEW',
         }));
         item = r.Attributes;
@@ -427,7 +441,8 @@ async function handleMessage(ctx, id, msg) {
           TableName: TABLE,
           Item: {
             connectionId: { S: TUG }, role: { S: 'meta' }, ttl: { N: ttl() },
-            a: { N: '0' }, b: { N: '0' }, goal: { N: String(effect.goal) },
+            a: { N: '0' }, b: { N: '0' }, pulls: { N: '0' }, goal: { N: String(effect.goal) },
+            sizeA: { N: String(effect.sizeA) }, sizeB: { N: String(effect.sizeB) },
             startsAt: { N: String(effect.startsAt) }, endsAt: { N: String(effect.endsAt) },
             mode: { S: effect.mode }, teamA: { S: effect.a }, teamB: { S: effect.b }, phones: { N: String(phones) },
             active: { BOOL: true }, done: { BOOL: false }, winner: { S: '' },

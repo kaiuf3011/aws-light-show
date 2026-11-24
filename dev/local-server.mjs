@@ -39,7 +39,7 @@ function finishTug() {
   if (tug.done) return;
   tug.done = true; tug.active = false;
   tug.winner = tug.a === tug.b ? 'draw' : tug.a > tug.b ? 'A' : 'B';
-  broadcast({ name: 'tugwin', winner: tug.winner, mode: tug.mode, a: tug.teamA, b: tug.teamB, scoreA: tug.a, scoreB: tug.b,
+  broadcast({ name: 'tugwin', winner: tug.winner, mode: tug.mode, a: tug.teamA, b: tug.teamB, scoreA: tug.a, scoreB: tug.b, pulls: tug.pulls || tug.a + tug.b,
     phones: tug.phones, seconds: Math.max(1, Math.round((Math.min(Date.now(), tug.endsAt) - tug.startsAt) / 1000)) }, 600);
 }
 const chargeView = () => ({ type: 'charge', ...meter, level: Math.min(1, meter.taps / meter.goal) });
@@ -88,7 +88,9 @@ wss.on('connection', (ws) => {
     if (m.action === 'tug') {
       const now = Date.now();
       if (!tug.active || now < tug.startsAt || now >= tug.endsAt) return;
-      tug[m.team === 'B' ? 'b' : 'a'] += Math.min(40, Math.max(1, m.n | 0));
+      const n = Math.min(40, Math.max(1, m.n | 0)), big = Math.max(tug.sizeA || 1, tug.sizeB || 1);
+      const x = n * big / Math.max(1, (m.team === 'B' ? tug.sizeB : tug.sizeA) || big);
+      tug[m.team === 'B' ? 'b' : 'a'] += Math.floor(x) + (Math.random() < x - Math.floor(x) ? 1 : 0); tug.pulls = (tug.pulls || 0) + n;
       send(ws, tugView());
       if (Math.abs(tug.a - tug.b) >= tug.goal) finishTug();
       return;
@@ -129,7 +131,7 @@ wss.on('connection', (ws) => {
         effect.startsAt = Date.now() + 1200 + 3000;
         effect.endsAt = effect.startsAt + effect.seconds * 1000;
         tug = { a: 0, b: 0, goal: effect.goal, startsAt: effect.startsAt, endsAt: effect.endsAt, mode: effect.mode,
-          teamA: effect.a, teamB: effect.b, active: true, done: false, winner: '', phones };
+          teamA: effect.a, teamB: effect.b, active: true, done: false, winner: '', phones, sizeA: effect.sizeA, sizeB: effect.sizeB, pulls: 0 };
       }
       if (effect.name === 'quiz') {
         effect.phase = effect.phase || 'ask';
