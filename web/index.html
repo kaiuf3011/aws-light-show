@@ -65,7 +65,7 @@
   #tugInfo { font-size: 14px; color: var(--text-2); min-height: 20px; }
   #tugAvatar { width: 34vw; max-width: 150px; aspect-ratio: 1; object-fit: cover; border-radius: 14px; border: 3px solid; display: none; background: #1d1d20;
     transition: transform .08s var(--ease); }
-  #tugAvatar.png { object-fit: contain; border-color: transparent !important; background: transparent; }
+  #tugAvatar.png { object-fit: contain; border-color: transparent !important; background: transparent; width: auto; max-width: none; height: 26vh; aspect-ratio: auto; border: 0; }
   #tugAvatar.hit { transform: scale(1.14) rotate(-7deg); }
   .hitword { position: fixed; z-index: 30; pointer-events: none; font: 500 30px var(--mono); white-space: nowrap; -webkit-text-stroke: 2px #0f0f10; paint-order: stroke fill;
     animation: hitword .75s cubic-bezier(.2,1.5,.4,1) forwards; }

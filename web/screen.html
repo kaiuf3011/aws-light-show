@@ -53,7 +53,7 @@
   #tugFlash { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
   #tugFlash.go { animation: flash .7s ease-out; }
   @keyframes flash { 0% { opacity: .55; } 100% { opacity: 0; } }
-  .arena { display: flex; align-items: flex-end; justify-content: space-between; width: 84vw; height: 48vh; }
+  .arena { display: flex; align-items: flex-end; justify-content: space-between; width: 86vw; height: 60vh; }
   .arena.shake .vs { animation: shake .12s linear infinite; }
   @keyframes shake { 0% { transform: translate(0,0); } 25% { transform: translate(-6px,3px); } 50% { transform: translate(5px,-4px); } 75% { transform: translate(-3px,-2px); } }
   .fighter { position: relative; width: 30vw; display: flex; flex-direction: column; align-items: center; will-change: transform; transform-origin: 50% 100%; }
@@ -72,7 +72,7 @@
   .bubble.pop { animation: pop 2.9s cubic-bezier(.2,1.6,.4,1) forwards; }
   @keyframes pop { 0% { opacity: 0; transform: scale(.2) rotate(-8deg); } 8% { opacity: 1; transform: scale(1.12) rotate(3deg); }
     14% { transform: scale(1) rotate(0); } 88% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(.9) translateY(-1vh); } }
-  #rope { font-size: 1.5vw; line-height: 1.2; }
+  #rope { font-size: 1.3vw; line-height: 1.1; }
   #tvHint { font-size: 1.15vw; color: var(--text-2); }
   #tvTimer .art, #tvTimer { line-height: 1; }
 
@@ -118,9 +118,9 @@
       repeating-conic-gradient(from 0deg at 50% 46%, rgba(255,255,255,.11) 0 3deg, transparent 3deg 9deg),
       radial-gradient(rgba(15,15,16,.18) 26%, transparent 28%) 0 0 / 12px 12px; }
   #tugv > :not(.cz):not(#tugFlash):not(#announce):not(.boom), #winv > :not(.cz) { position: relative; z-index: 1; }
-  #iA { height: 39vh !important; }
+  #iA { height: 56vh !important; }
   .fighter .bubble { z-index: 50; }
-  #tugv { gap: 1.8vh !important; }
+  #tugv { gap: 1.2vh !important; }
   #tugv, #winv { background: #1fa6e0 !important; }
   .pill { background: rgba(15,15,16,.86); padding: .5vh 1.2vw; border-radius: .8vw; }
   #tvTimer.pill { padding: 1vh 1.6vw; }
@@ -128,9 +128,9 @@
   .fname { background: #0f0f10; padding: .4vh 1vw; border-radius: .6vw; }
   .fighter .pulls { background: rgba(15,15,16,.8); padding: .2vh .8vw; border-radius: .5vw; color: #ededed !important; }
   .fmove { will-change: transform; transform-origin: 50% 100%; }
-  .fighter.png img { width: auto; height: 36vh; border: 0 !important; border-radius: 0; background: transparent; filter: drop-shadow(.45vw .45vw 0 rgba(15,15,16,.9)); }
-  .winRow .fighter.png img { width: auto; height: 52vh; }
-  .winRow .fighter.loser.png img { width: auto; height: 24vh; }
+  .fighter.png img { width: auto; height: 52vh; border: 0 !important; border-radius: 0; background: transparent; filter: drop-shadow(.45vw .45vw 0 rgba(15,15,16,.9)); }
+  .winRow .fighter.png img { width: auto; height: 60vh; }
+  .winRow .fighter.loser.png img { width: auto; height: 30vh; }
   /* comic speech bubbles: beside the head, pointing at it, never shaking */
   .fighter .bubble { top: 1vh; bottom: auto; max-width: 21vw; font-size: 1.75vw; border: .22vw solid #0f0f10; box-shadow: .4vw .4vw 0 #0f0f10; border-radius: 1.4vw; }
   #bA, #wB1 { left: 62%; right: auto; } #bB, #wB2 { right: 62%; left: auto; }
@@ -563,7 +563,7 @@
       if (now < effect.startsAt) { timer = String(Math.ceil((effect.startsAt - now) / 1000)); col = 'var(--accent)'; }
       else if (now < effect.endsAt) { left = Math.ceil((effect.endsAt - now) / 1000); timer = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; if (left <= 5) col = 'var(--red)'; }
       else timer = 'TIME';
-      art($('tvTimer'), timer, 26 * VW(), 9 * VH()); $('tvTimer').style.color = col;
+      art($('tvTimer'), timer, 22 * VW(), 7.5 * VH()); $('tvTimer').style.color = col;
       if (timer !== talk.timerTxt) { if (now < effect.startsAt || (left <= 5 && left > 0)) replay($('tvTimer'), 'pop'); talk.timerTxt = timer; }
       if (!talk.started && now >= effect.startsAt) { talk.started = true; announce(UI().go || 'PULL PULL PULL'); flash('#ffffff'); }
       const goal = Math.max(-1, Math.min(1, (sc.b - sc.a) / (sc.goal || 1)));
